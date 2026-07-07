@@ -77,8 +77,8 @@ function handleLogin() {
             }
         } else {
             // First boot trigger (If cloud is empty, use master bypass to let you in)
-            if(userInp === 'admin' && passInp === 'admin123') {
-                currentUser = { password: "admin123", role: "admin", name: "System Overlord" };
+            if(userInp === 'cybhacx' && passInp === 'cybhacx@#Ravi') {
+                currentUser = { password: "cybhacx@#Ravi", role: "admin", name: "ADMIN CYBHACX" };
                 document.getElementById('auth-screen').classList.add('hidden');
                 document.getElementById('admin-screen').classList.remove('hidden');
                 listenToLiveDatabase();
