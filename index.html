@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡ CORE CYBER VAULT ⚡</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="cyber-bg-grid"></div>
+
+    <div class="container">
+        
+        <!-- ================= 1. LOGIN SCREEN ================= -->
+        <div id="auth-screen" class="screen card active-screen">
+            <h1 class="neon-title">⚡ SYSTEM_CORE</h1>
+            <p class="subtitle">SECURE ASSET & ATTENDANCE MAINBOARD</p>
+            
+            <div id="login-form-group">
+                <div class="input-group">
+                    <label><span class="txt-pink">►</span> ENTER SYSTEM ID</label>
+                    <input type="text" id="login-username" placeholder="Username...">
+                </div>
+                <div class="input-group">
+                    <label><span class="txt-blue">►</span> PASSCODE MATRIX</label>
+                    <input type="password" id="login-password" placeholder="••••••••">
+                </div>
+                <button onclick="handleLogin()" class="btn-cyber btn-glow-blue">INITIALIZE LOGIN</button>
+                <p class="forget-link" onclick="showForgetPassword()">[ FORGET PASSWORD? ]</p>
+            </div>
+
+            <!-- Forget Password Form -->
+            <div id="forget-form-group" class="hidden">
+                <h3 class="txt-pink">// CREDENTIAL RECOVERY</h3>
+                <div class="input-group">
+                    <label>USERNAME</label>
+                    <input type="text" id="forget-username" placeholder="Username...">
+                </div>
+                <div class="input-group">
+                    <label>MASTER SECURITY ANSWER</label>
+                    <input type="text" id="forget-security" placeholder="Security key...">
+                </div>
+                <div class="input-group">
+                    <label>NEW SECURITY PASSCODE</label>
+                    <input type="password" id="forget-new-password" placeholder="••••••••">
+                </div>
+                <button onclick="handleForgetPassword()" class="btn-cyber btn-glow-pink">OVERWRITE PASSCODE</button>
+                <p class="forget-link" onclick="hideForgetPassword()">[ BACK TO LOGIN ]</p>
+            </div>
+
+            <p id="auth-error" class="error-text"></p>
+            <p id="auth-success" class="success-text"></p>
+        </div>
+
+        <!-- ================= 2. USER SCREEN (SAVING MODULE) ================= -->
+        <div id="user-screen" class="screen card hidden">
+            <div class="header">
+                <h2>👋 OPERATOR: <span id="user-display-name" class="txt-green">Ravi</span></h2>
+                <button onclick="logout()" class="btn-disconnect">DISCONNECT</button>
+            </div>
+            
+            <div class="cyber-panel">
+                <h3 class="panel-title">// DAILY ATTENDANCE & SAVING INPUT</h3>
+                
+                <div class="input-group">
+                    <label>CREDIT AMOUNT TO SAVE (₹)</label>
+                    <input type="number" id="saving-amount" placeholder="Enter amount (e.g. 500)" min="1">
+                </div>
+
+                <div class="signature-area">
+                    <label>✍️ BIOMETRIC SIGNATURE VERIFICATION</label>
+                    <canvas id="sig-canvas" width="320" height="150"></canvas>
+                    <button onclick="clearSignature()" class="btn-reset">RESET SIGN PAD</button>
+                </div>
+
+                <button onclick="submitDailyEntry()" class="btn-cyber btn-glow-green" style="margin-top: 25px;">UPLOAD ENTRY TO MAINBOARD</button>
+                <p id="user-msg" class="success-text"></p>
+            </div>
+        </div>
+
+        <!-- ================= 3. ADMIN SCREEN (CORE CONTROL & SIGNUP) ================= -->
+        <div id="admin-screen" class="screen hidden">
+            <div class="card header admin-header">
+                <h2 class="neon-title-mini">// OVERLORD_CONTROL_PANEL</h2>
+                <button onclick="logout()" class="btn-disconnect">DISCONNECT</button>
+            </div>
+
+            <!-- Live Dashboard Stats -->
+            <div class="stats-container">
+                <div class="card stat-box glow-border-blue">
+                    <h3>TOTAL VAULT BALANCES</h3>
+                    <p class="stat-number txt-blue-glow">₹<span id="total-pool-money">0</span></p>
+                </div>
+                <div class="card stat-box glow-border-pink">
+                    <h3>TOTAL ENTRIES LOGGED</h3>
+                    <p class="stat-number txt-pink-glow"><span id="total-entries-count">0</span></p>
+                </div>
+            </div>
+
+            <!-- ADMIN CREATES USER/ADMIN HERE -->
+            <div class="card glow-border-pink" style="margin-top: 10px;">
+                <h3 class="txt-pink" style="margin-top:0;">🛠️ GENERATE NEW CREDENTIALS (ADMIN EXCLUSIVE)</h3>
+                <div class="admin-form-grid">
+                    <div class="input-group">
+                        <label>CHOOSE USERNAME</label>
+                        <input type="text" id="signup-username" placeholder="e.g. rahul">
+                    </div>
+                    <div class="input-group">
+                        <label>FULL NAME</label>
+                        <input type="text" id="signup-name" placeholder="e.g. Rahul Sharma">
+                    </div>
+                    <div class="input-group">
+                        <label>SECURITY QUESTION: SECRET CODE / ANSWER</label>
+                        <input type="text" id="signup-security" placeholder="For password recovery">
+                    </div>
+                    <div class="input-group">
+                        <label>ASSIGN PASSCODE</label>
+                        <input type="password" id="signup-password" placeholder="••••••••">
+                    </div>
+                    <div class="input-group">
+                        <label>SYSTEM ACCOUNT ROLE</label>
+                        <select id="signup-role">
+                            <option value="user">Standard User (Hacker)</option>
+                            <option value="admin">System Admin (Overlord)</option>
+                        </select>
+                    </div>
+                </div>
+                <button onclick="handleAdminCreateUser()" class="btn-cyber btn-glow-pink" style="margin-top: 15px;">PROVISION ACCOUNT</button>
+                <p id="admin-create-msg" class="success-text"></p>
+                <p id="admin-create-err" class="error-text"></p>
+            </div>
+
+            <!-- Big Live Ledgers Table -->
+            <div class="card table-container glow-border-green" style="margin-top: 25px;">
+                <h3 class="txt-green" style="margin-top:0;">📋 LIVE TRANSACTION & ATTENDANCE LEDGERS</h3>
+                <table id="records-table">
+                    <thead>
+                        <tr>
+                            <th>OPERATOR</th>
+                            <th>TIMESTAMP</th>
+                            <th>CREDITS EXTRACTED</th>
+                            <th>STATUS</th>
+                            <th>SECURE SIGNATURE</th>
+                        </tr>
+                    </thead>
+                    <tbody id="records-body">
+                        <!-- Transformed JS elements appear here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
