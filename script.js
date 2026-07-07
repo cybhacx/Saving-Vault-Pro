@@ -1,10 +1,18 @@
-// मास्टर डेटाबेस सिंक (प्रारंभिक डिफ़ॉल्ट क्रेडेंशियल्स)
-let CRITICAL_DATABASE = JSON.parse(localStorage.getItem('cyberVaultUsers')) || {
-    "admin": { password: "admin123", role: "admin", name: "System Overlord", securityAnswer: "admin" },
-    "ravi": { password: "ravi123", role: "user", name: "Ravi Kumar", securityAnswer: "bullet" }
+// 1. FIREBASE MAIN ENCRYPTION CONFIGURATION MATRIX
+const firebaseConfig = {
+  apiKey: "AIzaSyD6A6Jn61-_fUD8FRjC2bbccYNpMIYw3Sk",
+  authDomain: "saving-wallet-pro.firebaseapp.com",
+  databaseURL: "https://saving-wallet-pro-default-rtdb.firebaseio.com",
+  projectId: "saving-wallet-pro",
+  storageBucket: "saving-wallet-pro.firebasestorage.app",
+  messagingSenderId: "190574060583",
+  appId: "1:190574060583:web:eee472df4a0c6be3aa5a02"
 };
 
-let savingRecords = JSON.parse(localStorage.getItem('savingRecords')) || [];
+// Initialize Cloud Core Gateway
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
 let currentUser = null;
 
 // Signature Variable Nodes
@@ -12,7 +20,18 @@ const canvas = document.getElementById('sig-canvas');
 const ctx = canvas?.getContext('2d');
 let drawing = false;
 
-// 1. FORGET SYSTEM MANAGEMENT
+// Realtime Database Database Listener for Admin Table
+function listenToLiveDatabase() {
+    database.ref('savingRecords').on('value', (snapshot) => {
+        const records = [];
+        snapshot.forEach((childSnapshot) => {
+            records.push(childSnapshot.val());
+        });
+        renderAdminDashboard(records);
+    });
+}
+
+// 2. FORGET SYSTEM TOGGLES
 function showForgetPassword() {
     document.getElementById('login-form-group').classList.add('hidden');
     document.getElementById('forget-form-group').classList.remove('hidden');
@@ -24,32 +43,56 @@ function hideForgetPassword() {
     document.getElementById('auth-error').innerText = "";
 }
 
-// 2. USER/ADMIN LOGIN LOGIC
+// 3. USER/ADMIN CLOUD LOGIN SYSTEM
 function handleLogin() {
     const userInp = document.getElementById('login-username').value.trim().toLowerCase();
     const passInp = document.getElementById('login-password').value;
     const err = document.getElementById('auth-error');
 
-    if (CRITICAL_DATABASE[userInp] && CRITICAL_DATABASE[userInp].password === passInp) {
-        currentUser = CRITICAL_DATABASE[userInp];
-        currentUser.username = userInp;
-        err.innerText = "";
-        
-        document.getElementById('auth-screen').classList.add('hidden');
-        if (currentUser.role === 'admin') {
-            document.getElementById('admin-screen').classList.remove('hidden');
-            renderAdminDashboard();
-        } else {
-            document.getElementById('user-screen').classList.remove('hidden');
-            document.getElementById('user-display-name').innerText = currentUser.name;
-            initSignatureEngine();
-        }
-    } else {
-        err.innerText = "🚨 ACCESS DENIED: SECURE PROTOCOL BREACH!";
+    if(!userInp || !passInp) {
+        err.innerText = "🚨 ACCESS DENIED: Empty Matrix Loops!";
+        return;
     }
+
+    // Ping Firebase to fetch the secure identity profile
+    database.ref('users/' + userInp).once('value').then((snapshot) => {
+        if (snapshot.exists()) {
+            const userData = snapshot.val();
+            if (userData.password === passInp) {
+                currentUser = userData;
+                currentUser.username = userInp;
+                err.innerText = "";
+                
+                document.getElementById('auth-screen').classList.add('hidden');
+                if (currentUser.role === 'admin') {
+                    document.getElementById('admin-screen').classList.remove('hidden');
+                    listenToLiveDatabase(); // Trigger Realtime Synchronization
+                } else {
+                    document.getElementById('user-screen').classList.remove('hidden');
+                    document.getElementById('user-display-name').innerText = currentUser.name;
+                    initSignatureEngine();
+                }
+            } else {
+                err.innerText = "🚨 ACCESS DENIED: PASSCODE INVALID!";
+            }
+        } else {
+            // First boot trigger (If cloud is empty, use master bypass to let you in)
+            if(userInp === 'admin' && passInp === 'admin123') {
+                currentUser = { password: "admin123", role: "admin", name: "System Overlord" };
+                document.getElementById('auth-screen').classList.add('hidden');
+                document.getElementById('admin-screen').classList.remove('hidden');
+                listenToLiveDatabase();
+            } else {
+                err.innerText = "🚨 ACCESS DENIED: NODE IDENTITY NOT DEPLOYED!";
+            }
+        }
+    }).catch(e => {
+        err.innerText = "🚨 FAULT: Connect Firebase Rules Framework!";
+        console.error(e);
+    });
 }
 
-// 3. ADMIN-EXCLUSIVE ACCOUNT CREATION LOGIC
+// 4. ADMIN ONLY: CLOUD USER PROVISIONING
 function handleAdminCreateUser() {
     const username = document.getElementById('signup-username').value.trim().toLowerCase();
     const name = document.getElementById('signup-name').value.trim();
@@ -60,32 +103,35 @@ function handleAdminCreateUser() {
     const err = document.getElementById('admin-create-err');
     const succ = document.getElementById('admin-create-msg');
 
-    err.innerText = "";
-    succ.innerText = "";
+    err.innerText = ""; succ.innerText = "";
 
     if(!username || !name || !security || !password) {
-        err.innerText = "❌ ERROR: All configuration modules must be filled!";
-        return;
-    }
-    if(CRITICAL_DATABASE[username]) {
-        err.innerText = "❌ ERROR: Identity signature already exists in core database!";
+        err.innerText = "❌ ERROR: Configuration modules incomplete!";
         return;
     }
 
-    // Inject account settings directly inside current database pool
-    CRITICAL_DATABASE[username] = { password, role, name, securityAnswer: security };
-    localStorage.setItem('cyberVaultUsers', JSON.stringify(CRITICAL_DATABASE));
-
-    succ.innerText = `✅ SUCCESS: Account for [${name}] initialized as ${role.toUpperCase()}!`;
-    
-    // Reset Form Fields
-    document.getElementById('signup-username').value = "";
-    document.getElementById('signup-name').value = "";
-    document.getElementById('signup-security').value = "";
-    document.getElementById('signup-password').value = "";
+    database.ref('users/' + username).once('value').then((snapshot) => {
+        if(snapshot.exists()) {
+            err.innerText = "❌ ERROR: Signature identifier already claimed!";
+        } else {
+            // Write payload data directly into cloud nodes
+            database.ref('users/' + username).set({
+                password: password,
+                role: role,
+                name: name,
+                securityAnswer: security
+            }).then(() => {
+                succ.innerText = `✅ ACCOUNT DEPLOYED: [${name}] initialized successfully!`;
+                document.getElementById('signup-username').value = "";
+                document.getElementById('signup-name').value = "";
+                document.getElementById('signup-security').value = "";
+                document.getElementById('signup-password').value = "";
+            });
+        }
+    });
 }
 
-// 4. PASSWORD RECOVERY SYSTEM
+// 5. SECURE CLOUD PASSWORD RECOVERY
 function handleForgetPassword() {
     const username = document.getElementById('forget-username').value.trim().toLowerCase();
     const security = document.getElementById('forget-security').value.trim().toLowerCase();
@@ -94,42 +140,42 @@ function handleForgetPassword() {
     const succ = document.getElementById('auth-success');
 
     if(!username || !security || !newPass) {
-        err.innerText = "🚨 FAULT: Recovery arrays incomplete.";
+        err.innerText = "🚨 FAULT: Missing verification matrix fields.";
         return;
     }
 
-    if(CRITICAL_DATABASE[username] && CRITICAL_DATABASE[username].securityAnswer === security) {
-        CRITICAL_DATABASE[username].password = newPass;
-        localStorage.setItem('cyberVaultUsers', JSON.stringify(CRITICAL_DATABASE));
-        err.innerText = "";
-        succ.innerText = "🟢 PASSCODE MODIFIED! RETURNING TO AUTH UNIT.";
-        setTimeout(() => { hideForgetPassword(); succ.innerText = ""; }, 1500);
-    } else {
-        err.innerText = "🚨 CRITICAL BREACH: ANSWER MATRIX REJECTED!";
-    }
+    database.ref('users/' + username).once('value').then((snapshot) => {
+        if(snapshot.exists() && snapshot.val().securityAnswer === security) {
+            database.ref('users/' + username + '/password').set(newPass).then(() => {
+                err.innerText = "";
+                succ.innerText = "🟢 SYSTEM INJECT: PASSCODE MODIFIED!";
+                setTimeout(() => { hideForgetPassword(); succ.innerText = ""; }, 1500);
+            });
+        } else {
+            err.innerText = "🚨 CRITICAL BREACH: ANSWER SIGNATURE INVALID!";
+        }
+    });
 }
 
-// 5. SIGNATURE ENGINE (Canvas Canvas Drawing Handler)
+// 6. HARDWARE DIGITAL BIOMETRIC SIGN-PAD
 function initSignatureEngine() {
     if (!canvas) return;
-    ctx.strokeStyle = '#00ff66'; // Neon Green Canvas Pen Glow
+    ctx.strokeStyle = '#00ff66'; // Glowing Green Pen
     
     canvas.addEventListener('mousedown', () => drawing = true);
     canvas.addEventListener('mouseup', () => { drawing = false; ctx.beginPath(); });
     canvas.addEventListener('mousemove', draw);
 
-    // Mobile Systems
+    // Mobile Ecosystem Compatibility
     canvas.addEventListener('touchstart', (e) => { drawing = true; e.preventDefault(); });
     canvas.addEventListener('touchend', () => { drawing = false; ctx.beginPath(); });
     canvas.addEventListener('touchmove', (e) => {
         if (!drawing) return;
         const touch = e.touches[0];
         const rect = canvas.getBoundingClientRect();
-        ctx.lineWidth = 3;
-        ctx.lineCap = 'round';
+        ctx.lineWidth = 3; ctx.lineCap = 'round';
         ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
-        ctx.stroke();
-        ctx.beginPath();
+        ctx.stroke(); ctx.beginPath();
         ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
     });
 }
@@ -137,25 +183,21 @@ function initSignatureEngine() {
 function draw(e) {
     if (!drawing) return;
     const rect = canvas.getBoundingClientRect();
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
+    ctx.lineWidth = 3; ctx.lineCap = 'round';
     ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-    ctx.stroke();
-    ctx.beginPath();
+    ctx.stroke(); ctx.beginPath();
     ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
 }
 
-function clearSignature() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-}
+function clearSignature() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
 
-// 6. TRANSACTION LOGGING SUBMISSION
+// 7. TRANSACTION PROCESSING GATEWAY
 function submitDailyEntry() {
     const amount = document.getElementById('saving-amount').value;
     const msg = document.getElementById('user-msg');
 
     if (!amount || amount <= 0) {
-        alert("CRITICAL LOG FLUID: Enter valid monetary credits!");
+        alert("CRITICAL FAULT: Invalid monetary allocation credit!");
         return;
     }
 
@@ -169,17 +211,17 @@ function submitDailyEntry() {
         signature: signatureImage
     };
 
-    savingRecords.push(entry);
-    localStorage.setItem('savingRecords', JSON.stringify(savingRecords));
-
-    msg.innerText = `🟢 INJECTED: ₹${amount} logged under encrypted logs.`;
-    document.getElementById('saving-amount').value = "";
-    clearSignature();
-    setTimeout(() => { msg.innerText = ""; }, 3000);
+    // Push secure JSON mapping node to Cloud Mainframe
+    database.ref('savingRecords').push(entry).then(() => {
+        msg.innerText = `🟢 SUCCESS: ₹${amount} saved & synced across cloud grid.`;
+        document.getElementById('saving-amount').value = "";
+        clearSignature();
+        setTimeout(() => { msg.innerText = ""; }, 3000);
+    });
 }
 
-// 7. ADMIN RE-RENDERING LOOPS
-function renderAdminDashboard() {
+// 8. REALTIME LIVE RE-RENDERING LOOPS
+function renderAdminDashboard(records) {
     const tbody = document.getElementById('records-body');
     const totalMoneyText = document.getElementById('total-pool-money');
     const totalEntriesText = document.getElementById('total-entries-count');
@@ -187,7 +229,7 @@ function renderAdminDashboard() {
     tbody.innerHTML = "";
     let totalMoney = 0;
 
-    savingRecords.forEach(record => {
+    records.forEach(record => {
         totalMoney += record.amount;
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -201,10 +243,10 @@ function renderAdminDashboard() {
     });
 
     totalMoneyText.innerText = totalMoney.toLocaleString('en-IN');
-    totalEntriesText.innerText = savingRecords.length;
+    totalEntriesText.innerText = records.length;
 }
 
-// 8. LOGOUT SYSTEM
+// 9. SYSTEM HANDSHAKE TERMINATION
 function logout() {
     currentUser = null;
     document.getElementById('login-username').value = "";
