@@ -54,13 +54,13 @@
         </div>
 
         <!-- ================= 2. USER SCREEN (SAVING MODULE) ================= -->
-        <div id="user-screen" class="screen card hidden">
-            <div class="header">
-                <h2>👋 OPERATOR: <span id="user-display-name" class="txt-green">Ravi</span></h2>
+        <div id="user-screen" class="screen hidden">
+            <div class="card header">
+                <h2>👋 OPERATOR: <span id="user-display-name" class="txt-green">Agent</span></h2>
                 <button onclick="logout()" class="btn-disconnect">DISCONNECT</button>
             </div>
             
-            <div class="cyber-panel">
+            <div class="card cyber-panel">
                 <h3 class="panel-title">// DAILY ATTENDANCE & SAVING INPUT</h3>
                 
                 <div class="input-group">
@@ -77,16 +77,39 @@
                 <button onclick="submitDailyEntry()" class="btn-cyber btn-glow-green" style="margin-top: 25px;">UPLOAD ENTRY TO MAINBOARD</button>
                 <p id="user-msg" class="success-text"></p>
             </div>
+
+            <!-- User Personal History Ledger & Delete Request -->
+            <div class="card glow-border-blue" style="margin-top: 20px;">
+                <div class="filter-header-flex">
+                    <h3 class="txt-blue" style="margin:0;">📜 MY LOGGED ENTRIES</h3>
+                    <div class="search-box">
+                        <input type="text" id="user-search-input" placeholder="🔍 Search my records..." onkeyup="renderUserLedger()">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>TIMESTAMP</th>
+                                <th>CREDITS</th>
+                                <th>STATUS</th>
+                                <th>ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-records-body"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
-        <!-- ================= 3. ADMIN SCREEN (CORE CONTROL & SIGNUP) ================= -->
+        <!-- ================= 3. ADMIN SCREEN (CORE CONTROL & DASHBOARD) ================= -->
         <div id="admin-screen" class="screen hidden">
             <div class="card header admin-header">
                 <h2 class="neon-title-mini">// CYBHACX CONTROL PANEL</h2>
                 <button onclick="logout()" class="btn-disconnect">DISCONNECT</button>
             </div>
 
-            <!-- Live Dashboard Stats -->
+            <!-- Live Dashboard Stats & Progress Bar -->
             <div class="stats-container">
                 <div class="card stat-box glow-border-blue">
                     <h3>TOTAL VAULT BALANCES</h3>
@@ -98,12 +121,23 @@
                 </div>
             </div>
 
-            <!-- ADMIN CREATES USER/ADMIN HERE -->
-            <div class="card glow-border-pink" style="margin-top: 10px;">
-                <h3 class="txt-pink" style="margin-top:0;">🛠️ GENERATE NEW CREDENTIALS (ADMIN EXCLUSIVE)</h3>
+            <!-- Target Goal Progress Bar (Admin Exclusive) -->
+            <div class="card glow-border-green" style="padding: 20px; margin-top: -10px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:12px; font-weight:bold;">
+                    <span class="txt-green">🎯 TARGET POOL PROGRESS (GOAL: ₹<span id="target-goal-val">1,00,000</span>)</span>
+                    <span id="progress-percent-txt" class="txt-green">0%</span>
+                </div>
+                <div class="progress-track">
+                    <div id="target-progress-fill" class="progress-fill"></div>
+                </div>
+            </div>
+
+            <!-- Profile Management / Provision Section (Admin Exclusive) -->
+            <div class="card glow-border-pink" style="margin-top: 15px;">
+                <h3 class="txt-pink" style="margin-top:0;">🛠️ USER PROFILES & CREDENTIAL CONTROLLER</h3>
                 <div class="admin-form-grid">
                     <div class="input-group">
-                        <label>CHOOSE USERNAME</label>
+                        <label>USER / SYSTEM ID</label>
                         <input type="text" id="signup-username" placeholder="e.g. rahul">
                     </div>
                     <div class="input-group">
@@ -111,24 +145,95 @@
                         <input type="text" id="signup-name" placeholder="e.g. Rahul Sharma">
                     </div>
                     <div class="input-group">
-                        <label>SECURITY QUESTION: SECRET CODE / ANSWER</label>
-                        <input type="text" id="signup-security" placeholder="For password recovery">
+                        <label>SECURITY ANSWER</label>
+                        <input type="text" id="signup-security" placeholder="Security answer">
                     </div>
                     <div class="input-group">
-                        <label>ASSIGN PASSCODE</label>
+                        <label>PASSCODE</label>
                         <input type="password" id="signup-password" placeholder="••••••••">
                     </div>
                     <div class="input-group">
-                        <label>SYSTEM ACCOUNT ROLE</label>
+                        <label>ACCOUNT ROLE</label>
                         <select id="signup-role">
                             <option value="user">Standard User (Agent)</option>
                             <option value="admin">System Admin (CYBHACX)</option>
                         </select>
                     </div>
                 </div>
-                <button onclick="handleAdminCreateUser()" class="btn-cyber btn-glow-pink" style="margin-top: 15px;">PROVISION ACCOUNT</button>
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button onclick="handleAdminCreateUser()" class="btn-cyber btn-glow-pink">PROVISION / UPDATE ACCOUNT</button>
+                    <button onclick="clearProfileForm()" class="btn-reset-filter" style="width: 150px;">CLEAR FORM</button>
+                </div>
                 <p id="admin-create-msg" class="success-text"></p>
                 <p id="admin-create-err" class="error-text"></p>
+
+                <!-- Manage Existing Profiles Table -->
+                <div class="table-container" style="margin-top: 15px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>USER ID</th>
+                                <th>NAME</th>
+                                <th>ROLE</th>
+                                <th>SECURITY KEY</th>
+                                <th>ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-profiles-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Matrix Filter Deck & Download Controller -->
+            <div class="card glow-border-blue" style="margin-top: 25px;">
+                <div class="filter-header-flex">
+                    <h3 class="txt-blue" style="margin:0;">🔍 MATRIX FILTER CONTROL DECK</h3>
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="downloadFilteredData()" class="btn-download">⬇️ DOWNLOAD CSV</button>
+                        <button onclick="resetFilters()" class="btn-reset-filter">RESET FILTERS</button>
+                    </div>
+                </div>
+                
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <input type="text" id="admin-search-input" placeholder="🔍 Search anywhere across live records (Name, amount, status)..." onkeyup="applyMatrixFilters()">
+                </div>
+
+                <div class="filter-grid">
+                    <div class="input-group">
+                        <label>FILTER BY OPERATOR</label>
+                        <select id="filter-user" onchange="applyMatrixFilters()">
+                            <option value="ALL">All Operators</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>FILTER BY YEAR</label>
+                        <select id="filter-year" onchange="applyMatrixFilters()">
+                            <option value="ALL">All Years</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>FILTER BY MONTH</label>
+                        <select id="filter-month" onchange="applyMatrixFilters()">
+                            <option value="ALL">All Months</option>
+                            <option value="0">January</option>
+                            <option value="1">February</option>
+                            <option value="2">March</option>
+                            <option value="3">April</option>
+                            <option value="4">May</option>
+                            <option value="5">June</option>
+                            <option value="6">July</option>
+                            <option value="7">August</option>
+                            <option value="8">September</option>
+                            <option value="9">October</option>
+                            <option value="10">November</option>
+                            <option value="11">December</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>EXACT DATE (OPTIONAL)</label>
+                        <input type="date" id="filter-date" onchange="applyMatrixFilters()">
+                    </div>
+                </div>
             </div>
 
             <!-- Big Live Ledgers Table -->
@@ -142,22 +247,19 @@
                             <th>CREDITS EXTRACTED</th>
                             <th>STATUS</th>
                             <th>SECURE SIGNATURE</th>
+                            <th>ADMIN ACTIONS</th>
                         </tr>
                     </thead>
-                    <tbody id="records-body">
-                        <!-- Transformed JS elements appear here -->
-                    </tbody>
+                    <tbody id="records-body"></tbody>
                 </table>
             </div>
         </div>
 
     </div>
 
-    <!-- ================= BACKEND CLOUD CDN INTEGRATION ================= -->
+    <!-- Firebase SDK Integration -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-
-    <!-- Main JS Application Logic -->
     <script src="script.js"></script>
 </body>
 </html>
