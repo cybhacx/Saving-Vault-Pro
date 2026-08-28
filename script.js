@@ -1,12 +1,12 @@
 // 1. FIREBASE CONFIGURATION
 const firebaseConfig = {
-  apiKey: "AIzaSyD6A6Jn61-_fUD8FRjC2bbccYNpMIYw3Sk",
-  authDomain: "saving-wallet-pro.firebaseapp.com",
-  databaseURL: "https://saving-wallet-pro-default-rtdb.firebaseio.com",
-  projectId: "saving-wallet-pro",
-  storageBucket: "saving-wallet-pro.firebasestorage.app",
-  messagingSenderId: "190574060583",
-  appId: "1:190574060583:web:eee472df4a0c6be3aa5a02"
+    apiKey: "AIzaSyD6A6Jn61-_fUD8FRjC2bbccYNpMIYw3Sk",
+    authDomain: "saving-wallet-pro.firebaseapp.com",
+    databaseURL: "https://saving-wallet-pro-default-rtdb.firebaseio.com",
+    projectId: "saving-wallet-pro",
+    storageBucket: "saving-wallet-pro.firebasestorage.app",
+    messagingSenderId: "190574060583",
+    appId: "1:190574060583:web:eee472df4a0c6be3aa5a02"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -22,13 +22,86 @@ const canvas = document.getElementById('sig-canvas');
 const ctx = canvas?.getContext('2d');
 let drawing = false;
 
+// DATE & TIME HELPERS (INDIAN FORMAT: DD/MM/YYYY, hh:mm:ss am/pm)
+function formatIndianDateTime(dateObj) {
+    if (!dateObj || isNaN(dateObj.getTime())) return 'N/A';
+    
+    return dateObj.toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+    });
+}
+
+function parseRecordDate(timestampStr) {
+    if (!timestampStr) return null;
+
+    // 1. Direct standard parse (ISO or timestamp number)
+    const directDate = new Date(timestampStr);
+    if (!isNaN(directDate.getTime()) && String(timestampStr).includes('T')) {
+        return directDate;
+    }
+
+    // 2. Parse custom/localized strings like DD/MM/YYYY, MM/DD/YYYY, or DD-MM-YYYY
+    const cleanStr = String(timestampStr).trim();
+    const parts = cleanStr.split(/[\s,/:-]+/);
+
+    if (parts.length >= 3) {
+        let first = parseInt(parts[0], 10);
+        let second = parseInt(parts[1], 10);
+        let year = parseInt(parts[2], 10);
+
+        // Basic validity check for year
+        if (year < 100) year += 2000;
+
+        let day = first;
+        let month = second - 1; // 0-indexed month
+
+        // Agar first part > 12 hai to confirm DD/MM/YYYY hai
+        if (first > 12) {
+            day = first;
+            month = second - 1;
+        } else if (second > 12) {
+            // Agar second part > 12 hai to yeh MM/DD/YYYY format hai
+            month = first - 1;
+            day = second;
+        }
+
+        let hours = 0;
+        let minutes = 0;
+        let seconds = 0;
+
+        if (parts.length >= 5) {
+            hours = parseInt(parts[3], 10) || 0;
+            minutes = parseInt(parts[4], 10) || 0;
+            seconds = parseInt(parts[5], 10) || 0;
+
+            const isPM = /pm/i.test(cleanStr);
+            const isAM = /am/i.test(cleanStr);
+
+            if (isPM && hours < 12) hours += 12;
+            if (isAM && hours === 12) hours = 0;
+        }
+
+        const parsed = new Date(year, month, day, hours, minutes, seconds);
+        if (!isNaN(parsed.getTime())) return parsed;
+    }
+
+    return isNaN(directDate.getTime()) ? null : directDate;
+}
+
 // 2. REALTIME LISTENERS
 function listenToLiveDatabase() {
     database.ref('savingRecords').on('value', (snapshot) => {
         allRecordsCache = [];
         snapshot.forEach((childSnapshot) => {
             const data = childSnapshot.val();
-            data._key = childSnapshot.key; // Store key for deleting
+            data._key = childSnapshot.key;
             allRecordsCache.push(data);
         });
         populateFilterDropdowns(allRecordsCache);
@@ -41,11 +114,11 @@ function listenToUserProfiles() {
         const tbody = document.getElementById('user-profiles-body');
         if (!tbody) return;
         tbody.innerHTML = "";
-        
+
         snapshot.forEach((childSnapshot) => {
             const user = childSnapshot.val();
             const uId = childSnapshot.key;
-            
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td><b>${uId}</b></td>
@@ -65,6 +138,8 @@ function listenToUserProfiles() {
 function populateFilterDropdowns(records) {
     const userSelect = document.getElementById('filter-user');
     const yearSelect = document.getElementById('filter-year');
+
+    if (!userSelect || !yearSelect) return;
 
     const currentUserVal = userSelect.value;
     const currentYearVal = yearSelect.value;
@@ -98,27 +173,11 @@ function populateFilterDropdowns(records) {
     if (Array.from(yearsSet).map(String).includes(currentYearVal)) yearSelect.value = currentYearVal;
 }
 
-function parseRecordDate(timestampStr) {
-    if (!timestampStr) return null;
-    const directDate = new Date(timestampStr);
-    if (!isNaN(directDate.getTime())) return directDate;
-
-    const parts = timestampStr.split(/[\s,/:-]+/);
-    if (parts.length >= 3) {
-        const d = parseInt(parts[0], 10);
-        const m = parseInt(parts[1], 10) - 1;
-        const y = parseInt(parts[2], 10);
-        const parsed = new Date(y, m, d);
-        if (!isNaN(parsed.getTime())) return parsed;
-    }
-    return null;
-}
-
 function applyMatrixFilters() {
-    const selectedUser = document.getElementById('filter-user').value;
-    const selectedYear = document.getElementById('filter-year').value;
-    const selectedMonth = document.getElementById('filter-month').value;
-    const selectedDate = document.getElementById('filter-date').value;
+    const selectedUser = document.getElementById('filter-user')?.value || 'ALL';
+    const selectedYear = document.getElementById('filter-year')?.value || 'ALL';
+    const selectedMonth = document.getElementById('filter-month')?.value || 'ALL';
+    const selectedDate = document.getElementById('filter-date')?.value || '';
     const searchQuery = document.getElementById('admin-search-input')?.value.toLowerCase().trim() || "";
 
     currentFilteredRecords = allRecordsCache.filter(record => {
@@ -139,9 +198,10 @@ function applyMatrixFilters() {
         }
 
         if (searchQuery) {
+            const formattedTime = formatIndianDateTime(dateObj).toLowerCase();
             const matchesUser = record.username?.toLowerCase().includes(searchQuery);
             const matchesAmt = String(record.amount).includes(searchQuery);
-            const matchesTime = record.timestamp?.toLowerCase().includes(searchQuery);
+            const matchesTime = record.timestamp?.toLowerCase().includes(searchQuery) || formattedTime.includes(searchQuery);
             const matchesStatus = record.status?.toLowerCase().includes(searchQuery);
             if (!matchesUser && !matchesAmt && !matchesTime && !matchesStatus) return false;
         }
@@ -153,10 +213,10 @@ function applyMatrixFilters() {
 }
 
 function resetFilters() {
-    document.getElementById('filter-user').value = 'ALL';
-    document.getElementById('filter-year').value = 'ALL';
-    document.getElementById('filter-month').value = 'ALL';
-    document.getElementById('filter-date').value = '';
+    if (document.getElementById('filter-user')) document.getElementById('filter-user').value = 'ALL';
+    if (document.getElementById('filter-year')) document.getElementById('filter-year').value = 'ALL';
+    if (document.getElementById('filter-month')) document.getElementById('filter-month').value = 'ALL';
+    if (document.getElementById('filter-date')) document.getElementById('filter-date').value = '';
     const adminSearch = document.getElementById('admin-search-input');
     if (adminSearch) adminSearch.value = '';
     applyMatrixFilters();
@@ -168,6 +228,7 @@ function showForgetPassword() {
     document.getElementById('forget-form-group').classList.remove('hidden');
     document.getElementById('auth-error').innerText = "";
 }
+
 function hideForgetPassword() {
     document.getElementById('forget-form-group').classList.add('hidden');
     document.getElementById('login-form-group').classList.remove('hidden');
@@ -179,7 +240,7 @@ function handleLogin() {
     const passInp = document.getElementById('login-password').value;
     const err = document.getElementById('auth-error');
 
-    if(!userInp || !passInp) {
+    if (!userInp || !passInp) {
         err.innerText = "🚨 ACCESS DENIED: Empty Matrix Loops!";
         return;
     }
@@ -196,7 +257,7 @@ function handleLogin() {
                 err.innerText = "🚨 ACCESS DENIED: PASSCODE INVALID!";
             }
         } else {
-            if(userInp === 'cybhacx' && passInp === 'cybhacx@#Ravi') {
+            if (userInp === 'cybhacx' && passInp === 'cybhacx@#Ravi') {
                 currentUser = { password: "cybhacx@#Ravi", role: "admin", name: "ADMIN CYBHACX", username: "cybhacx" };
                 launchAppForUser();
             } else {
@@ -242,8 +303,11 @@ function renderUserLedger() {
             const key = childSnapshot.key;
 
             if (item.username === currentUser.name) {
+                const dateObj = parseRecordDate(item.timestamp);
+                const displayTime = formatIndianDateTime(dateObj);
+
                 if (searchQuery) {
-                    const matchTime = item.timestamp?.toLowerCase().includes(searchQuery);
+                    const matchTime = item.timestamp?.toLowerCase().includes(searchQuery) || displayTime.toLowerCase().includes(searchQuery);
                     const matchAmt = String(item.amount).includes(searchQuery);
                     if (!matchTime && !matchAmt) return;
                 }
@@ -252,7 +316,7 @@ function renderUserLedger() {
                 const isRequested = item.deleteRequested === true;
 
                 tr.innerHTML = `
-                    <td>${item.timestamp || 'N/A'}</td>
+                    <td>${displayTime}</td>
                     <td class="txt-green" style="font-weight:bold;">₹${(item.amount || 0).toLocaleString('en-IN')}</td>
                     <td><span style="color:${isRequested ? '#ffaa00' : '#00ff66'};">${isRequested ? '// REQ DELETION' : '// SECURED'}</span></td>
                     <td>
@@ -300,7 +364,7 @@ function handleAdminCreateUser() {
     const succ = document.getElementById('admin-create-msg');
     err.innerText = ""; succ.innerText = "";
 
-    if(!username || !name || !security) {
+    if (!username || !name || !security) {
         err.innerText = "❌ ERROR: Username, Name and Security answer required!";
         return;
     }
@@ -344,9 +408,11 @@ function downloadFilteredData() {
     csvContent += "Operator,Timestamp,Amount,Status,Delete_Requested\r\n";
 
     currentFilteredRecords.forEach(r => {
+        const dateObj = parseRecordDate(r.timestamp);
+        const displayTime = formatIndianDateTime(dateObj);
         const row = [
             `"${r.username || ''}"`,
-            `"${r.timestamp || ''}"`,
+            `"${displayTime}"`,
             r.amount || 0,
             `"${r.status || 'SECURED'}"`,
             r.deleteRequested ? "YES" : "NO"
@@ -371,13 +437,13 @@ function handleForgetPassword() {
     const err = document.getElementById('auth-error');
     const succ = document.getElementById('auth-success');
 
-    if(!username || !security || !newPass) {
+    if (!username || !security || !newPass) {
         err.innerText = "🚨 FAULT: Missing verification matrix fields.";
         return;
     }
 
     database.ref('users/' + username).once('value').then((snapshot) => {
-        if(snapshot.exists() && snapshot.val().securityAnswer === security) {
+        if (snapshot.exists() && snapshot.val().securityAnswer === security) {
             database.ref('users/' + username + '/password').set(newPass).then(() => {
                 err.innerText = "";
                 succ.innerText = "🟢 SYSTEM INJECT: PASSCODE MODIFIED!";
@@ -420,7 +486,7 @@ function draw(e) {
     ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
 }
 
-function clearSignature() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+function clearSignature() { if (canvas) ctx.clearRect(0, 0, canvas.width, canvas.height); }
 
 // 10. DAILY ENTRY SUBMISSION
 function submitDailyEntry() {
@@ -433,9 +499,11 @@ function submitDailyEntry() {
     }
 
     const signatureImage = canvas.toDataURL();
+    
+    // Store ISO string for reliable parsing across all devices
     const entry = {
         username: currentUser.name,
-        timestamp: new Date().toLocaleString(),
+        timestamp: new Date().toISOString(),
         amount: parseFloat(amount),
         status: "SECURED",
         signature: signatureImage,
@@ -458,6 +526,7 @@ function renderAdminDashboard(records) {
     const progressFill = document.getElementById('target-progress-fill');
     const progressTxt = document.getElementById('progress-percent-txt');
     
+    if (!tbody) return;
     tbody.innerHTML = "";
     let totalMoney = 0;
 
@@ -465,10 +534,12 @@ function renderAdminDashboard(records) {
         totalMoney += (parseFloat(record.amount) || 0);
         const row = document.createElement('tr');
         const isDeleteReq = record.deleteRequested === true;
+        const dateObj = parseRecordDate(record.timestamp);
+        const displayTime = formatIndianDateTime(dateObj);
 
         row.innerHTML = `
             <td><b>${record.username || 'N/A'}</b></td>
-            <td>${record.timestamp || 'N/A'}</td>
+            <td>${displayTime}</td>
             <td class="txt-blue" style="font-weight:bold;">₹${(record.amount || 0).toLocaleString('en-IN')}</td>
             <td><span style="color:${isDeleteReq ? '#ffaa00' : '#00ff66'};">// ${isDeleteReq ? 'REQ DELETION' : (record.status || 'SECURED')}</span></td>
             <td>${record.signature ? `<img src="${record.signature}" class="sig-img" alt="signature"/>` : '<span style="color:#6b7280;">NO SIGN</span>'}</td>
@@ -479,8 +550,8 @@ function renderAdminDashboard(records) {
         tbody.appendChild(row);
     });
 
-    totalMoneyText.innerText = totalMoney.toLocaleString('en-IN');
-    totalEntriesText.innerText = records.length;
+    if (totalMoneyText) totalMoneyText.innerText = totalMoney.toLocaleString('en-IN');
+    if (totalEntriesText) totalEntriesText.innerText = records.length;
 
     // Update Target Goal Progress Bar
     const percent = Math.min(100, Math.round((totalMoney / TARGET_GOAL) * 100));
