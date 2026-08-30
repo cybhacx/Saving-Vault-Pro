@@ -15,15 +15,149 @@ const database = firebase.database();
 let currentUser = null;
 let allRecordsCache = [];
 let currentFilteredRecords = [];
+let uploadedProfileBase64 = null;
+let adminUploadedProfileBase64 = null;
+let currentSigMode = 'draw'; // 'draw' or 'upload'
+let uploadedSignatureBase64 = null;
 const TARGET_GOAL = 100000; // Target goal amount in ₹
 
-// Signature Setup
+// Default Avatar SVG
+const DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2300f0ff' viewBox='0 0 16 16'><path d='M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z'/></svg>";
+
+// Signature Canvas Setup
 const canvas = document.getElementById('sig-canvas');
 const ctx = canvas?.getContext('2d');
 let drawing = false;
 
 // ----------------------------------------------------
-// DATE & TIME HELPERS (FIXED INDIAN PARSER & FORMATTER)
+// AUTO-INJECT NEON SMOKE & FLOATING PARTICLES ENGINE
+// ----------------------------------------------------
+function setupFuturisticEffects() {
+    // 1. Inject Canvas if missing in HTML
+    if (!document.getElementById('cyber-particles-canvas')) {
+        const pCanvas = document.createElement('canvas');
+        pCanvas.id = 'cyber-particles-canvas';
+        document.body.prepend(pCanvas);
+    }
+
+    // 2. Inject Multi-Color Smoke Flares inside Auth Screen
+    const authScreen = document.getElementById('auth-screen');
+    if (authScreen && !authScreen.querySelector('.smoke-cyan')) {
+        const colors = ['cyan', 'pink', 'green', 'purple'];
+        colors.forEach(col => {
+            const smoke = document.createElement('div');
+            smoke.className = `smoke-cloud smoke-${col}`;
+            authScreen.prepend(smoke);
+        });
+    }
+
+    // 3. Start Particle Physics
+    initCyberParticles();
+}
+
+function initCyberParticles() {
+    const pCanvas = document.getElementById('cyber-particles-canvas');
+    if (!pCanvas) return;
+    const pCtx = pCanvas.getContext('2d');
+
+    let width = (pCanvas.width = window.innerWidth);
+    let height = (pCanvas.height = window.innerHeight);
+
+    window.addEventListener('resize', () => {
+        width = pCanvas.width = window.innerWidth;
+        height = pCanvas.height = window.innerHeight;
+    });
+
+    const colors = ['#00f0ff', '#ff007f', '#00ff66', '#b026ff'];
+    const particles = [];
+    const particleCount = Math.min(85, Math.floor((width * height) / 12000));
+
+    class Particle {
+        constructor() {
+            this.x = Math.random() * width;
+            this.y = Math.random() * height;
+            this.size = Math.random() * 2.2 + 0.8;
+            this.speedX = (Math.random() - 0.5) * 0.75;
+            this.speedY = (Math.random() - 0.5) * 0.75;
+            this.color = colors[Math.floor(Math.random() * colors.length)];
+            this.alpha = Math.random() * 0.6 + 0.3;
+        }
+
+        update() {
+            this.x += this.speedX;
+            this.y += this.speedY;
+
+            if (this.x < 0) this.x = width;
+            if (this.x > width) this.x = 0;
+            if (this.y < 0) this.y = height;
+            if (this.y > height) this.y = 0;
+        }
+
+        draw() {
+            pCtx.save();
+            pCtx.globalAlpha = this.alpha;
+            pCtx.shadowBlur = 10;
+            pCtx.shadowColor = this.color;
+            pCtx.fillStyle = this.color;
+            pCtx.beginPath();
+            pCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            pCtx.fill();
+            pCtx.restore();
+        }
+    }
+
+    for (let i = 0; i < particleCount; i++) {
+        particles.push(new Particle());
+    }
+
+    function animate() {
+        pCtx.clearRect(0, 0, width, height);
+
+        for (let i = 0; i < particles.length; i++) {
+            particles[i].update();
+            particles[i].draw();
+
+            // Interconnecting subtle laser webs
+            for (let j = i + 1; j < particles.length; j++) {
+                const dx = particles[i].x - particles[j].x;
+                const dy = particles[i].y - particles[j].y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < 110) {
+                    pCtx.save();
+                    pCtx.globalAlpha = (1 - dist / 110) * 0.18;
+                    pCtx.strokeStyle = particles[i].color;
+                    pCtx.lineWidth = 0.6;
+                    pCtx.beginPath();
+                    pCtx.moveTo(particles[i].x, particles[i].y);
+                    pCtx.lineTo(particles[j].x, particles[j].y);
+                    pCtx.stroke();
+                    pCtx.restore();
+                }
+            }
+        }
+        requestAnimationFrame(animate);
+    }
+    animate();
+}
+
+// ----------------------------------------------------
+// PASSWORD VISIBILITY TOGGLER
+// ----------------------------------------------------
+function togglePassVisibility(inputId, btnElement) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    if (input.type === 'password') {
+        input.type = 'text';
+        btnElement.innerText = '🙈';
+    } else {
+        input.type = 'password';
+        btnElement.innerText = '👁️';
+    }
+}
+
+// ----------------------------------------------------
+// DATE & TIME HELPERS (INDIAN FORMATTER)
 // ----------------------------------------------------
 function formatIndianDateTime(dateObj) {
     if (!dateObj || isNaN(dateObj.getTime())) return 'N/A';
@@ -43,15 +177,12 @@ function formatIndianDateTime(dateObj) {
 function parseRecordDate(timestampStr) {
     if (!timestampStr) return null;
 
-    // 1. Direct ISO String parsing (e.g. 2026-08-28T...)
     const cleanStr = String(timestampStr).trim();
     if (cleanStr.includes('T')) {
         const directDate = new Date(cleanStr);
         if (!isNaN(directDate.getTime())) return directDate;
     }
 
-    // 2. Tokenize date and time components
-    // Matches formats: DD/MM/YYYY, MM/DD/YYYY, DD-MM-YYYY, YYYY-MM-DD
     const parts = cleanStr.split(/[\s,/:-]+/);
     if (parts.length >= 3) {
         let p1 = parseInt(parts[0], 10);
@@ -60,27 +191,20 @@ function parseRecordDate(timestampStr) {
 
         let year, month, day;
 
-        // Pattern A: YYYY-MM-DD
         if (p1 > 1000) {
             year = p1;
             month = p2 - 1;
             day = p3;
         } else {
-            // Pattern B & C: DD/MM/YYYY or MM/DD/YYYY
             year = p3 < 100 ? p3 + 2000 : p3;
 
             if (p1 > 12) {
-                // Must be DD/MM/YYYY (e.g., 25/08/2026)
                 day = p1;
                 month = p2 - 1;
             } else if (p2 > 12) {
-                // Must be MM/DD/YYYY (e.g., 08/25/2026)
                 month = p1 - 1;
                 day = p2;
             } else {
-                // Ambiguous case (e.g. 08/09/2026 or 07/08/2026)
-                // Default to standard MM/DD/YYYY if generated by standard JS toLocaleString()
-                // If the first part is August (08), treat 08 as month (August)
                 if (p1 === 8 || p1 === 7) {
                     month = p1 - 1;
                     day = p2;
@@ -116,7 +240,216 @@ function parseRecordDate(timestampStr) {
 }
 
 // ----------------------------------------------------
-// 2. REALTIME LISTENERS
+// 2. USER PROFILE ENGINE & MANAGEMENT
+// ----------------------------------------------------
+function renderUserProfileData() {
+    if (!currentUser) return;
+
+    document.getElementById('user-display-name').innerText = currentUser.name || 'Agent';
+    document.getElementById('profile-card-name').innerText = currentUser.name || 'Agent';
+    document.getElementById('profile-card-id').innerText = currentUser.username || 'NODE';
+    document.getElementById('profile-card-email').innerText = currentUser.email || 'Not Set';
+    document.getElementById('profile-card-phone').innerText = currentUser.phone || 'Not Set';
+    document.getElementById('profile-card-dob').innerText = currentUser.dob || 'Not Set';
+    document.getElementById('profile-card-role').innerText = currentUser.role?.toUpperCase() || 'STANDARD AGENT';
+
+    const avatarImg = document.getElementById('user-profile-img');
+    if (avatarImg) {
+        avatarImg.src = currentUser.profileImg || DEFAULT_AVATAR;
+    }
+}
+
+function toggleEditProfileDeck() {
+    const deck = document.getElementById('edit-profile-deck');
+    if (!deck) return;
+
+    const isHidden = deck.classList.contains('hidden');
+    if (isHidden) {
+        document.getElementById('edit-profile-name').value = currentUser.name || '';
+        document.getElementById('edit-profile-email').value = currentUser.email || '';
+        document.getElementById('edit-profile-phone').value = currentUser.phone || '';
+        document.getElementById('edit-profile-dob').value = currentUser.dob || '';
+        uploadedProfileBase64 = null;
+        document.getElementById('profile-save-msg').innerText = '';
+        deck.classList.remove('hidden');
+    } else {
+        deck.classList.add('hidden');
+    }
+}
+
+function handleImageUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        uploadedProfileBase64 = event.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function handleAdminImageUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        adminUploadedProfileBase64 = event.target.result;
+        const previewImg = document.getElementById('admin-preview-img');
+        const placeholder = document.getElementById('admin-preview-placeholder');
+        if (previewImg && placeholder) {
+            previewImg.src = adminUploadedProfileBase64;
+            previewImg.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+        }
+    };
+    reader.readAsDataURL(file);
+}
+
+function saveUserProfileChanges() {
+    if (!currentUser || !currentUser.username) return;
+
+    const name = document.getElementById('edit-profile-name').value.trim();
+    const email = document.getElementById('edit-profile-email').value.trim();
+    const phone = document.getElementById('edit-profile-phone').value.trim();
+    const dob = document.getElementById('edit-profile-dob').value;
+    const msg = document.getElementById('profile-save-msg');
+
+    if (!name) {
+        alert("Full name cannot be empty!");
+        return;
+    }
+
+    const updates = {
+        name: name,
+        email: email,
+        phone: phone,
+        dob: dob
+    };
+
+    if (uploadedProfileBase64) {
+        updates.profileImg = uploadedProfileBase64;
+    }
+
+    database.ref('users/' + currentUser.username).update(updates).then(() => {
+        currentUser = { ...currentUser, ...updates };
+        localStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
+        renderUserProfileData();
+        msg.innerText = "🟢 PROFILE MATRIX UPDATED SUCCESSFULLY!";
+        setTimeout(() => {
+            toggleEditProfileDeck();
+            msg.innerText = "";
+        }, 1200);
+    }).catch(err => {
+        alert("Update Error: " + err.message);
+    });
+}
+
+// ----------------------------------------------------
+// 3. DUAL SIGNATURE ENGINE (DRAW VS UPLOAD)
+// ----------------------------------------------------
+function switchSignatureMode(mode) {
+    currentSigMode = mode;
+    const drawBtn = document.getElementById('btn-mode-draw');
+    const uploadBtn = document.getElementById('btn-mode-upload');
+    const drawContainer = document.getElementById('sig-draw-container');
+    const uploadContainer = document.getElementById('sig-upload-container');
+
+    if (mode === 'draw') {
+        drawBtn.classList.add('active');
+        uploadBtn.classList.remove('active');
+        drawContainer.classList.remove('hidden');
+        uploadContainer.classList.add('hidden');
+    } else {
+        uploadBtn.classList.add('active');
+        drawBtn.classList.remove('active');
+        uploadContainer.classList.remove('hidden');
+        drawContainer.classList.add('hidden');
+    }
+}
+
+function handleSignatureFileUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        const img = new Image();
+        img.onload = function() {
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = img.width;
+            tempCanvas.height = img.height;
+
+            tempCtx.drawImage(img, 0, 0);
+            const imgData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+            const data = imgData.data;
+
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                const brightness = (r + g + b) / 3;
+
+                if (brightness > 180) {
+                    data[i + 3] = 0; // Transparent Background
+                } else {
+                    data[i] = 0;
+                    data[i + 1] = 240;
+                    data[i + 2] = 255;
+                    data[i + 3] = 255;
+                }
+            }
+
+            tempCtx.putImageData(imgData, 0, 0);
+            uploadedSignatureBase64 = tempCanvas.toDataURL();
+
+            const previewImg = document.getElementById('sig-preview-img');
+            const previewWrapper = document.getElementById('sig-preview-wrapper');
+            previewImg.src = uploadedSignatureBase64;
+            previewWrapper.classList.remove('hidden');
+        };
+        img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function initSignatureEngine() {
+    if (!canvas) return;
+    ctx.strokeStyle = '#00ff66';
+    
+    canvas.addEventListener('mousedown', () => drawing = true);
+    canvas.addEventListener('mouseup', () => { drawing = false; ctx.beginPath(); });
+    canvas.addEventListener('mousemove', draw);
+
+    canvas.addEventListener('touchstart', (e) => { drawing = true; e.preventDefault(); });
+    canvas.addEventListener('touchend', () => { drawing = false; ctx.beginPath(); });
+    canvas.addEventListener('touchmove', (e) => {
+        if (!drawing) return;
+        const touch = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        ctx.lineWidth = 3; ctx.lineCap = 'round';
+        ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+        ctx.stroke(); ctx.beginPath();
+        ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+    });
+}
+
+function draw(e) {
+    if (!drawing) return;
+    const rect = canvas.getBoundingClientRect();
+    ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+    ctx.stroke(); ctx.beginPath();
+    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+}
+
+function clearSignature() {
+    if (canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+// ----------------------------------------------------
+// 4. REALTIME LISTENERS
 // ----------------------------------------------------
 function listenToLiveDatabase() {
     database.ref('savingRecords').on('value', (snapshot) => {
@@ -140,15 +473,22 @@ function listenToUserProfiles() {
         snapshot.forEach((childSnapshot) => {
             const user = childSnapshot.val();
             const uId = childSnapshot.key;
+            const userAvatar = user.profileImg || DEFAULT_AVATAR;
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
+                <td><img src="${userAvatar}" class="admin-tbl-avatar" alt="Avatar"/></td>
                 <td><b>${uId}</b></td>
                 <td>${user.name || 'N/A'}</td>
+                <td style="font-size:11px; line-height:1.4;">
+                    📧 ${user.email || 'N/A'}<br>
+                    📱 ${user.phone || 'N/A'}<br>
+                    🎂 ${user.dob || 'N/A'}
+                </td>
                 <td><span class="${user.role === 'admin' ? 'txt-pink' : 'txt-green'}">${user.role?.toUpperCase()}</span></td>
                 <td>${user.securityAnswer || 'N/A'}</td>
                 <td>
-                    <button class="btn-table-edit" onclick="editUserProfile('${uId}', '${user.name || ''}', '${user.securityAnswer || ''}', '${user.role || 'user'}')">EDIT</button>
+                    <button class="btn-table-edit" onclick="editUserProfile('${uId}')">EDIT</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -157,7 +497,7 @@ function listenToUserProfiles() {
 }
 
 // ----------------------------------------------------
-// 3. MATRIX FILTERS & SEARCH
+// 5. MATRIX FILTERS & SEARCH
 // ----------------------------------------------------
 function populateFilterDropdowns(records) {
     const userSelect = document.getElementById('filter-user');
@@ -247,7 +587,7 @@ function resetFilters() {
 }
 
 // ----------------------------------------------------
-// 4. AUTHENTICATION & SESSIONS
+// 6. AUTHENTICATION & SESSIONS
 // ----------------------------------------------------
 function showForgetPassword() {
     document.getElementById('login-form-group').classList.add('hidden');
@@ -278,6 +618,7 @@ function handleLogin() {
                 currentUser = userData;
                 currentUser.username = userInp;
                 err.innerText = "";
+                localStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
                 launchAppForUser();
             } else {
                 err.innerText = "🚨 ACCESS DENIED: PASSCODE INVALID!";
@@ -285,6 +626,7 @@ function handleLogin() {
         } else {
             if (userInp === 'cybhacx' && passInp === 'cybhacx@#Ravi') {
                 currentUser = { password: "cybhacx@#Ravi", role: "admin", name: "ADMIN CYBHACX", username: "cybhacx" };
+                localStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
                 launchAppForUser();
             } else {
                 err.innerText = "🚨 ACCESS DENIED: NODE IDENTITY NOT DEPLOYED!";
@@ -304,14 +646,14 @@ function launchAppForUser() {
         listenToUserProfiles();
     } else {
         document.getElementById('user-screen').classList.remove('hidden');
-        document.getElementById('user-display-name').innerText = currentUser.name;
+        renderUserProfileData();
         initSignatureEngine();
         listenToUserRecords();
     }
 }
 
 // ----------------------------------------------------
-// 5. USER SPECIFIC ACTIONS & DELETE REQUEST
+// 7. USER SPECIFIC ACTIONS & DELETE REQUEST
 // ----------------------------------------------------
 function listenToUserRecords() {
     database.ref('savingRecords').on('value', () => {
@@ -371,7 +713,7 @@ function requestDeleteEntry(key) {
 }
 
 // ----------------------------------------------------
-// 6. ADMIN ENTRY DELETE & PROFILE CONTROLLER
+// 8. ADMIN ENTRY DELETE & FULL USER PROFILE OVERWRITE
 // ----------------------------------------------------
 function deleteRecordByAdmin(key) {
     if (confirm("⚠️ Kya aap sach me is entry ko database se permanently DELETE karna chahte hain?")) {
@@ -386,6 +728,9 @@ function deleteRecordByAdmin(key) {
 function handleAdminCreateUser() {
     const username = document.getElementById('signup-username').value.trim().toLowerCase();
     const name = document.getElementById('signup-name').value.trim();
+    const email = document.getElementById('signup-email').value.trim();
+    const phone = document.getElementById('signup-phone').value.trim();
+    const dob = document.getElementById('signup-dob').value;
     const security = document.getElementById('signup-security').value.trim().toLowerCase();
     const password = document.getElementById('signup-password').value;
     const role = document.getElementById('signup-role').value;
@@ -401,10 +746,14 @@ function handleAdminCreateUser() {
 
     const payload = {
         name: name,
+        email: email,
+        phone: phone,
+        dob: dob,
         role: role,
         securityAnswer: security
     };
     if (password) payload.password = password;
+    if (adminUploadedProfileBase64) payload.profileImg = adminUploadedProfileBase64;
 
     database.ref('users/' + username).update(payload).then(() => {
         succ.innerText = `✅ ACCOUNT SAVED: [${name}] updated successfully!`;
@@ -412,23 +761,58 @@ function handleAdminCreateUser() {
     });
 }
 
-function editUserProfile(username, name, security, role) {
-    document.getElementById('signup-username').value = username;
-    document.getElementById('signup-name').value = name;
-    document.getElementById('signup-security').value = security;
-    document.getElementById('signup-role').value = role;
-    window.scrollTo({ top: 300, behavior: 'smooth' });
+function editUserProfile(username) {
+    database.ref('users/' + username).once('value').then(snapshot => {
+        if (!snapshot.exists()) return;
+        const user = snapshot.val();
+
+        document.getElementById('signup-username').value = username;
+        document.getElementById('signup-name').value = user.name || "";
+        document.getElementById('signup-email').value = user.email || "";
+        document.getElementById('signup-phone').value = user.phone || "";
+        document.getElementById('signup-dob').value = user.dob || "";
+        document.getElementById('signup-security').value = user.securityAnswer || "";
+        document.getElementById('signup-password').value = user.password || "";
+        document.getElementById('signup-role').value = user.role || "user";
+
+        const previewImg = document.getElementById('admin-preview-img');
+        const placeholder = document.getElementById('admin-preview-placeholder');
+
+        if (user.profileImg) {
+            adminUploadedProfileBase64 = user.profileImg;
+            previewImg.src = user.profileImg;
+            previewImg.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+        } else {
+            adminUploadedProfileBase64 = null;
+            previewImg.src = "";
+            previewImg.classList.add('hidden');
+            placeholder.classList.remove('hidden');
+        }
+
+        window.scrollTo({ top: 300, behavior: 'smooth' });
+    });
 }
 
 function clearProfileForm() {
     document.getElementById('signup-username').value = "";
     document.getElementById('signup-name').value = "";
+    document.getElementById('signup-email').value = "";
+    document.getElementById('signup-phone').value = "";
+    document.getElementById('signup-dob').value = "";
     document.getElementById('signup-security').value = "";
     document.getElementById('signup-password').value = "";
+    adminUploadedProfileBase64 = null;
+    const fileInp = document.getElementById('signup-profile-file');
+    if (fileInp) fileInp.value = "";
+    const previewImg = document.getElementById('admin-preview-img');
+    const placeholder = document.getElementById('admin-preview-placeholder');
+    if (previewImg) previewImg.classList.add('hidden');
+    if (placeholder) placeholder.classList.remove('hidden');
 }
 
 // ----------------------------------------------------
-// 7. DOWNLOAD FILTERED DATA AS CSV
+// 9. DOWNLOAD FILTERED DATA AS CSV
 // ----------------------------------------------------
 function downloadFilteredData() {
     if (currentFilteredRecords.length === 0) {
@@ -462,7 +846,7 @@ function downloadFilteredData() {
 }
 
 // ----------------------------------------------------
-// 8. FORGET PASSWORD RECOVERY
+// 10. FORGET PASSWORD RECOVERY
 // ----------------------------------------------------
 function handleForgetPassword() {
     const username = document.getElementById('forget-username').value.trim().toLowerCase();
@@ -490,42 +874,7 @@ function handleForgetPassword() {
 }
 
 // ----------------------------------------------------
-// 9. SIGNATURE CANVAS ENGINE
-// ----------------------------------------------------
-function initSignatureEngine() {
-    if (!canvas) return;
-    ctx.strokeStyle = '#00ff66';
-    
-    canvas.addEventListener('mousedown', () => drawing = true);
-    canvas.addEventListener('mouseup', () => { drawing = false; ctx.beginPath(); });
-    canvas.addEventListener('mousemove', draw);
-
-    canvas.addEventListener('touchstart', (e) => { drawing = true; e.preventDefault(); });
-    canvas.addEventListener('touchend', () => { drawing = false; ctx.beginPath(); });
-    canvas.addEventListener('touchmove', (e) => {
-        if (!drawing) return;
-        const touch = e.touches[0];
-        const rect = canvas.getBoundingClientRect();
-        ctx.lineWidth = 3; ctx.lineCap = 'round';
-        ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
-        ctx.stroke(); ctx.beginPath();
-        ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
-    });
-}
-
-function draw(e) {
-    if (!drawing) return;
-    const rect = canvas.getBoundingClientRect();
-    ctx.lineWidth = 3; ctx.lineCap = 'round';
-    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-    ctx.stroke(); ctx.beginPath();
-    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-}
-
-function clearSignature() { if (canvas) ctx.clearRect(0, 0, canvas.width, canvas.height); }
-
-// ----------------------------------------------------
-// 10. DAILY ENTRY SUBMISSION (Standard ISO format)
+// 11. DAILY ENTRY SUBMISSION (Supports Drawn or Uploaded Sign)
 // ----------------------------------------------------
 function submitDailyEntry() {
     const amount = document.getElementById('saving-amount').value;
@@ -536,15 +885,24 @@ function submitDailyEntry() {
         return;
     }
 
-    const signatureImage = canvas.toDataURL();
+    let finalSignature = null;
+
+    if (currentSigMode === 'draw') {
+        finalSignature = canvas.toDataURL();
+    } else {
+        if (!uploadedSignatureBase64) {
+            alert("Please upload your signature image first!");
+            return;
+        }
+        finalSignature = uploadedSignatureBase64;
+    }
     
-    // Future entries will strictly use ISO strings
     const entry = {
         username: currentUser.name,
         timestamp: new Date().toISOString(),
         amount: parseFloat(amount),
         status: "SECURED",
-        signature: signatureImage,
+        signature: finalSignature,
         deleteRequested: false
     };
 
@@ -552,12 +910,16 @@ function submitDailyEntry() {
         msg.innerText = `🟢 SUCCESS: ₹${amount} saved & synced across cloud grid.`;
         document.getElementById('saving-amount').value = "";
         clearSignature();
+        uploadedSignatureBase64 = null;
+        document.getElementById('sig-preview-wrapper')?.classList.add('hidden');
+        const fileInp = document.getElementById('sig-file-input');
+        if (fileInp) fileInp.value = "";
         setTimeout(() => { msg.innerText = ""; }, 3000);
     });
 }
 
 // ----------------------------------------------------
-// 11. ADMIN DASHBOARD RE-RENDER & PROGRESS BAR
+// 12. ADMIN DASHBOARD RE-RENDER & PROGRESS BAR
 // ----------------------------------------------------
 function renderAdminDashboard(records) {
     const tbody = document.getElementById('records-body');
@@ -593,17 +955,17 @@ function renderAdminDashboard(records) {
     if (totalMoneyText) totalMoneyText.innerText = totalMoney.toLocaleString('en-IN');
     if (totalEntriesText) totalEntriesText.innerText = records.length;
 
-    // Update Target Goal Progress Bar
     const percent = Math.min(100, Math.round((totalMoney / TARGET_GOAL) * 100));
     if (progressFill) progressFill.style.width = percent + "%";
     if (progressTxt) progressTxt.innerText = percent + "%";
 }
 
 // ----------------------------------------------------
-// 12. LOGOUT
+// 13. LOGOUT (SESSION CLEAR)
 // ----------------------------------------------------
 function logout() {
     currentUser = null;
+    localStorage.removeItem('cybhacx_auth_user');
     document.getElementById('login-username').value = "";
     document.getElementById('login-password').value = "";
     document.getElementById('user-screen').classList.add('hidden');
@@ -612,3 +974,51 @@ function logout() {
     document.getElementById('admin-create-err').innerText = "";
     document.getElementById('admin-create-msg').innerText = "";
 }
+
+// ----------------------------------------------------
+// 14. AUTO-LOGIN ON REFRESH & ENTER KEY NAVIGATION
+// ----------------------------------------------------
+document.addEventListener('DOMContentLoaded', () => {
+    // Dynamic initialization of background particles and neon smoke
+    setupFuturisticEffects();
+
+    // Check for existing session in localStorage
+    const savedUserSession = localStorage.getItem('cybhacx_auth_user');
+    if (savedUserSession) {
+        try {
+            currentUser = JSON.parse(savedUserSession);
+            database.ref('users/' + currentUser.username).once('value').then(snapshot => {
+                if (snapshot.exists()) {
+                    currentUser = { ...snapshot.val(), username: currentUser.username };
+                    localStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
+                }
+                launchAppForUser();
+            }).catch(() => {
+                launchAppForUser();
+            });
+        } catch (e) {
+            localStorage.removeItem('cybhacx_auth_user');
+        }
+    }
+
+    const loginUser = document.getElementById('login-username');
+    const loginPass = document.getElementById('login-password');
+
+    if (loginUser) {
+        loginUser.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                loginPass?.focus();
+            }
+        });
+    }
+
+    if (loginPass) {
+        loginPass.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleLogin();
+            }
+        });
+    }
+});

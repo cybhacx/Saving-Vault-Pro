@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚡ CORE CYBER VAULT ⚡</title>
+    <title>⚡ CYBHACX MONEY ⚡</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,7 +14,7 @@
         
         <!-- ================= 1. LOGIN SCREEN ================= -->
         <div id="auth-screen" class="screen card active-screen">
-            <h1 class="neon-title">⚡ SYSTEM_CORE</h1>
+            <h1 class="neon-title">⚡ CYBHACX MONEY</h1>
             <p class="subtitle">SECURE ASSET & ATTENDANCE MAINBOARD</p>
             
             <div id="login-form-group">
@@ -24,7 +24,10 @@
                 </div>
                 <div class="input-group">
                     <label><span class="txt-blue">►</span> PASSCODE MATRIX</label>
-                    <input type="password" id="login-password" placeholder="••••••••">
+                    <div class="password-wrapper">
+                        <input type="password" id="login-password" placeholder="••••••••">
+                        <button type="button" class="btn-toggle-eye" onclick="togglePassVisibility('login-password', this)">👁️</button>
+                    </div>
                 </div>
                 <button onclick="handleLogin()" class="btn-cyber btn-glow-blue">INITIALIZE LOGIN</button>
                 <p class="forget-link" onclick="showForgetPassword()">[ FORGET PASSWORD? ]</p>
@@ -43,7 +46,10 @@
                 </div>
                 <div class="input-group">
                     <label>NEW SECURITY PASSCODE</label>
-                    <input type="password" id="forget-new-password" placeholder="••••••••">
+                    <div class="password-wrapper">
+                        <input type="password" id="forget-new-password" placeholder="••••••••">
+                        <button type="button" class="btn-toggle-eye" onclick="togglePassVisibility('forget-new-password', this)">👁️</button>
+                    </div>
                 </div>
                 <button onclick="handleForgetPassword()" class="btn-cyber btn-glow-pink">OVERWRITE PASSCODE</button>
                 <p class="forget-link" onclick="hideForgetPassword()">[ BACK TO LOGIN ]</p>
@@ -53,13 +59,81 @@
             <p id="auth-success" class="success-text"></p>
         </div>
 
-        <!-- ================= 2. USER SCREEN (SAVING MODULE) ================= -->
+        <!-- ================= 2. USER SCREEN ================= -->
         <div id="user-screen" class="screen hidden">
             <div class="card header">
                 <h2>👋 OPERATOR: <span id="user-display-name" class="txt-green">Agent</span></h2>
                 <button onclick="logout()" class="btn-disconnect">DISCONNECT</button>
             </div>
             
+            <!-- User Digital Identity Card -->
+            <div class="card glow-border-blue profile-card">
+                <div class="profile-header-flex">
+                    <div class="profile-main-meta">
+                        <div class="profile-avatar-box">
+                            <img id="user-profile-img" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2300f0ff' viewBox='0 0 16 16'><path d='M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z'/></svg>" alt="Profile Picture">
+                        </div>
+                        <div class="profile-title-details">
+                            <h3 id="profile-card-name" class="txt-blue" style="margin: 0; font-size: 20px;">Operator Name</h3>
+                            <p class="txt-muted" style="margin: 4px 0 0 0; font-size: 13px;">SYSTEM ID: <span id="profile-card-id" class="txt-pink" style="font-weight: bold;">NODE_ID</span></p>
+                        </div>
+                    </div>
+                    <button class="btn-table-edit" style="padding: 8px 16px; font-size: 12px;" onclick="toggleEditProfileDeck()">⚙️ EDIT PROFILE</button>
+                </div>
+
+                <div class="profile-details-grid">
+                    <div class="profile-detail-item">
+                        <span class="detail-label">📧 EMAIL ADDRESS</span>
+                        <span id="profile-card-email" class="detail-value">Not Set</span>
+                    </div>
+                    <div class="profile-detail-item">
+                        <span class="detail-label">📱 CONTACT NUMBER</span>
+                        <span id="profile-card-phone" class="detail-value">Not Set</span>
+                    </div>
+                    <div class="profile-detail-item">
+                        <span class="detail-label">🎂 DATE OF BIRTH</span>
+                        <span id="profile-card-dob" class="detail-value">Not Set</span>
+                    </div>
+                    <div class="profile-detail-item">
+                        <span class="detail-label">🛡️ NODE ROLE</span>
+                        <span id="profile-card-role" class="detail-value txt-green">Standard User</span>
+                    </div>
+                </div>
+
+                <!-- Profile Edit Deck for User -->
+                <div id="edit-profile-deck" class="profile-edit-box hidden">
+                    <h4 class="txt-pink" style="margin-top:0;">// UPDATE PERSONAL DATA MATRIX</h4>
+                    <div class="admin-form-grid">
+                        <div class="input-group">
+                            <label>FULL NAME</label>
+                            <input type="text" id="edit-profile-name" placeholder="Full Name">
+                        </div>
+                        <div class="input-group">
+                            <label>EMAIL ADDRESS</label>
+                            <input type="email" id="edit-profile-email" placeholder="example@mail.com">
+                        </div>
+                        <div class="input-group">
+                            <label>CONTACT NUMBER</label>
+                            <input type="text" id="edit-profile-phone" placeholder="Phone Number">
+                        </div>
+                        <div class="input-group">
+                            <label>DATE OF BIRTH</label>
+                            <input type="date" id="edit-profile-dob">
+                        </div>
+                        <div class="input-group">
+                            <label>PROFILE AVATAR (IMAGE)</label>
+                            <input type="file" id="edit-profile-file" accept="image/*" onchange="handleImageUpload(event)">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button onclick="saveUserProfileChanges()" class="btn-cyber btn-glow-green" style="flex: 1; padding: 10px;">SAVE UPDATES</button>
+                        <button onclick="toggleEditProfileDeck()" class="btn-reset-filter" style="width: 120px;">CANCEL</button>
+                    </div>
+                    <p id="profile-save-msg" class="success-text" style="margin-bottom:0;"></p>
+                </div>
+            </div>
+            
+            <!-- Entry Form with Dual Signature Option -->
             <div class="card cyber-panel">
                 <h3 class="panel-title">// DAILY ATTENDANCE & SAVING INPUT</h3>
                 
@@ -70,15 +144,32 @@
 
                 <div class="signature-area">
                     <label>✍️ BIOMETRIC SIGNATURE VERIFICATION</label>
-                    <canvas id="sig-canvas" width="320" height="150"></canvas>
-                    <button onclick="clearSignature()" class="btn-reset">RESET SIGN PAD</button>
+                    
+                    <div class="sig-mode-switch">
+                        <button type="button" id="btn-mode-draw" class="btn-mode-tab active" onclick="switchSignatureMode('draw')">✏️ DRAW PAD</button>
+                        <button type="button" id="btn-mode-upload" class="btn-mode-tab" onclick="switchSignatureMode('upload')">📁 UPLOAD IMAGE</button>
+                    </div>
+
+                    <!-- Mode 1: Draw Pad -->
+                    <div id="sig-draw-container">
+                        <canvas id="sig-canvas" width="320" height="150"></canvas>
+                        <button type="button" onclick="clearSignature()" class="btn-reset">RESET SIGN PAD</button>
+                    </div>
+
+                    <!-- Mode 2: Upload File -->
+                    <div id="sig-upload-container" class="hidden">
+                        <input type="file" id="sig-file-input" accept="image/*" onchange="handleSignatureFileUpload(event)">
+                        <div id="sig-preview-wrapper" class="sig-preview-box hidden">
+                            <img id="sig-preview-img" src="" alt="Signature Preview">
+                        </div>
+                    </div>
                 </div>
 
                 <button onclick="submitDailyEntry()" class="btn-cyber btn-glow-green" style="margin-top: 25px;">UPLOAD ENTRY TO MAINBOARD</button>
                 <p id="user-msg" class="success-text"></p>
             </div>
 
-            <!-- User Personal History Ledger & Delete Request -->
+            <!-- User Records Table -->
             <div class="card glow-border-blue" style="margin-top: 20px;">
                 <div class="filter-header-flex">
                     <h3 class="txt-blue" style="margin:0;">📜 MY LOGGED ENTRIES</h3>
@@ -102,14 +193,13 @@
             </div>
         </div>
 
-        <!-- ================= 3. ADMIN SCREEN (CORE CONTROL & DASHBOARD) ================= -->
+        <!-- ================= 3. ADMIN SCREEN ================= -->
         <div id="admin-screen" class="screen hidden">
             <div class="card header admin-header">
                 <h2 class="neon-title-mini">// CYBHACX CONTROL PANEL</h2>
                 <button onclick="logout()" class="btn-disconnect">DISCONNECT</button>
             </div>
 
-            <!-- Live Dashboard Stats & Progress Bar -->
             <div class="stats-container">
                 <div class="card stat-box glow-border-blue">
                     <h3>TOTAL VAULT BALANCES</h3>
@@ -121,7 +211,6 @@
                 </div>
             </div>
 
-            <!-- Target Goal Progress Bar (Admin Exclusive) -->
             <div class="card glow-border-green" style="padding: 20px; margin-top: -10px;">
                 <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:12px; font-weight:bold;">
                     <span class="txt-green">🎯 TARGET POOL PROGRESS (GOAL: ₹<span id="target-goal-val">1,00,000</span>)</span>
@@ -132,7 +221,7 @@
                 </div>
             </div>
 
-            <!-- Profile Management / Provision Section (Admin Exclusive) -->
+            <!-- Complete Admin User & Profile Matrix Deck -->
             <div class="card glow-border-pink" style="margin-top: 15px;">
                 <h3 class="txt-pink" style="margin-top:0;">🛠️ USER PROFILES & CREDENTIAL CONTROLLER</h3>
                 <div class="admin-form-grid">
@@ -145,12 +234,27 @@
                         <input type="text" id="signup-name" placeholder="e.g. Rahul Sharma">
                     </div>
                     <div class="input-group">
+                        <label>EMAIL ADDRESS</label>
+                        <input type="email" id="signup-email" placeholder="e.g. rahul@mail.com">
+                    </div>
+                    <div class="input-group">
+                        <label>CONTACT NUMBER</label>
+                        <input type="text" id="signup-phone" placeholder="e.g. 9876543210">
+                    </div>
+                    <div class="input-group">
+                        <label>DATE OF BIRTH</label>
+                        <input type="date" id="signup-dob">
+                    </div>
+                    <div class="input-group">
                         <label>SECURITY ANSWER</label>
                         <input type="text" id="signup-security" placeholder="Security answer">
                     </div>
                     <div class="input-group">
                         <label>PASSCODE</label>
-                        <input type="password" id="signup-password" placeholder="••••••••">
+                        <div class="password-wrapper">
+                            <input type="password" id="signup-password" placeholder="••••••••">
+                            <button type="button" class="btn-toggle-eye" onclick="togglePassVisibility('signup-password', this)">👁️</button>
+                        </div>
                     </div>
                     <div class="input-group">
                         <label>ACCOUNT ROLE</label>
@@ -158,6 +262,16 @@
                             <option value="user">Standard User (Agent)</option>
                             <option value="admin">System Admin (CYBHACX)</option>
                         </select>
+                    </div>
+                    <div class="input-group" style="grid-column: 1 / -1;">
+                        <label>USER AVATAR / PROFILE PICTURE</label>
+                        <div style="display: flex; gap: 15px; align-items: center;">
+                            <input type="file" id="signup-profile-file" accept="image/*" onchange="handleAdminImageUpload(event)" style="flex: 1;">
+                            <div class="admin-avatar-preview" id="admin-avatar-preview-box">
+                                <img id="admin-preview-img" src="" alt="Avatar" class="hidden">
+                                <span id="admin-preview-placeholder" style="font-size: 10px; color: #6b7280;">NO PIC</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div style="display: flex; gap: 10px; margin-top: 15px;">
@@ -167,13 +281,15 @@
                 <p id="admin-create-msg" class="success-text"></p>
                 <p id="admin-create-err" class="error-text"></p>
 
-                <!-- Manage Existing Profiles Table -->
+                <!-- Full User Ledger in Admin View -->
                 <div class="table-container" style="margin-top: 15px;">
                     <table>
                         <thead>
                             <tr>
-                                <th>USER ID</th>
-                                <th>NAME</th>
+                                <th>AVATAR</th>
+                                <th>SYSTEM ID</th>
+                                <th>FULL NAME</th>
+                                <th>CONTACT DETAILS</th>
                                 <th>ROLE</th>
                                 <th>SECURITY KEY</th>
                                 <th>ACTION</th>
@@ -184,7 +300,7 @@
                 </div>
             </div>
 
-            <!-- Matrix Filter Deck & Download Controller -->
+            <!-- Filter Section -->
             <div class="card glow-border-blue" style="margin-top: 25px;">
                 <div class="filter-header-flex">
                     <h3 class="txt-blue" style="margin:0;">🔍 MATRIX FILTER CONTROL DECK</h3>
@@ -236,7 +352,7 @@
                 </div>
             </div>
 
-            <!-- Big Live Ledgers Table -->
+            <!-- Transactions Table -->
             <div class="card table-container glow-border-green" style="margin-top: 25px;">
                 <h3 class="txt-green" style="margin-top:0;">📋 LIVE TRANSACTION & ATTENDANCE LEDGERS</h3>
                 <table id="records-table">
@@ -257,7 +373,7 @@
 
     </div>
 
-    <!-- Firebase SDK Integration -->
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <script src="script.js"></script>
