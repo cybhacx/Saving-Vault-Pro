@@ -12,17 +12,18 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
-// RAZORPAY CONFIGURATION (Apni Razorpay Key ID yahan paste karein)
-const RAZORPAY_KEY_ID = "rzp_live_TW3Dh4C7B3KHW5"; // Replace with your Live or Test Key ID
+// RAZORPAY CONFIGURATION
+const RAZORPAY_KEY_ID = "rzp_live_TW3Dh4C7B3KHW5";
 
 let currentUser = null;
 let allRecordsCache = [];
+let currentUserRecordsCache = [];
 let currentFilteredRecords = [];
 let uploadedProfileBase64 = null;
 let adminUploadedProfileBase64 = null;
-let currentSigMode = 'draw'; // 'draw' or 'upload'
+let currentSigMode = 'draw';
 let uploadedSignatureBase64 = null;
-const TARGET_GOAL = 100000; // Target goal amount in ₹
+const TARGET_GOAL = 100000;
 
 // Default Avatar SVG
 const DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2300f0ff' viewBox='0 0 16 16'><path d='M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z'/></svg>";
@@ -36,39 +37,38 @@ let drawing = false;
 // PAYMENT MODAL CONTROLLER & RAZORPAY CHECKOUT
 // ----------------------------------------------------
 function showPaymentModal() {
-    document.getElementById('payment-modal').classList.remove('hidden');
-    document.getElementById('payment-form-step').classList.remove('hidden');
-    document.getElementById('payment-success-step').classList.add('hidden');
-    document.getElementById('payment-err').innerText = "";
+    document.getElementById('payment-modal')?.classList.remove('hidden');
+    document.getElementById('payment-form-step')?.classList.remove('hidden');
+    document.getElementById('payment-success-step')?.classList.add('hidden');
+    const err = document.getElementById('payment-err');
+    if (err) err.innerText = "";
 }
 
 function hidePaymentModal() {
-    document.getElementById('payment-modal').classList.add('hidden');
+    document.getElementById('payment-modal')?.classList.add('hidden');
 }
 
 function initiateRazorpayPayment() {
-    const name = document.getElementById('pay-name').value.trim();
-    const email = document.getElementById('pay-email').value.trim();
-    const phone = document.getElementById('pay-phone').value.trim();
-    const username = document.getElementById('pay-username').value.trim().toLowerCase();
+    const name = document.getElementById('pay-name')?.value.trim();
+    const email = document.getElementById('pay-email')?.value.trim();
+    const phone = document.getElementById('pay-phone')?.value.trim();
+    const username = document.getElementById('pay-username')?.value.trim().toLowerCase();
     const err = document.getElementById('payment-err');
 
     if (!name || !email || !phone || !username) {
-        err.innerText = "❌ Please fill all details before proceeding to pay!";
+        if (err) err.innerText = "❌ Please fill all details before proceeding to pay!";
         return;
     }
-    err.innerText = "";
+    if (err) err.innerText = "";
 
-    // Razorpay Standard Checkout Options (Amount is in Paise: 10 INR = 1000 Paise)
     const options = {
         "key": RAZORPAY_KEY_ID,
         "amount": "1000",
         "currency": "INR",
         "name": "CYBHACX MONEY",
-        "description": "Node Activation Pass (Lifetime)",
+        "description": "Node Activation Pass (Monthly Plan)",
         "image": "https://img.icons8.com/neon/96/00f0ff/cyberpunk.png",
         "handler": function (response) {
-            // Callback after payment completion
             handleSuccessfulPayment({
                 paymentId: response.razorpay_payment_id,
                 name: name,
@@ -101,11 +101,11 @@ function initiateRazorpayPayment() {
 }
 
 function handleSuccessfulPayment(paymentRecord) {
-    // 1. Log Payment Entry to Firebase Database
     database.ref('paymentRequests').push(paymentRecord).then(() => {
-        document.getElementById('conf-pay-id').innerText = paymentRecord.paymentId;
-        document.getElementById('payment-form-step').classList.add('hidden');
-        document.getElementById('payment-success-step').classList.remove('hidden');
+        const confId = document.getElementById('conf-pay-id');
+        if (confId) confId.innerText = paymentRecord.paymentId;
+        document.getElementById('payment-form-step')?.classList.add('hidden');
+        document.getElementById('payment-success-step')?.classList.remove('hidden');
     }).catch(err => {
         alert("Database error: " + err.message);
     });
@@ -219,9 +219,6 @@ function initCyberParticles() {
     animate();
 }
 
-// ----------------------------------------------------
-// PASSWORD VISIBILITY TOGGLER
-// ----------------------------------------------------
 function togglePassVisibility(inputId, btnElement) {
     const input = document.getElementById(inputId);
     if (!input) return;
@@ -234,12 +231,8 @@ function togglePassVisibility(inputId, btnElement) {
     }
 }
 
-// ----------------------------------------------------
-// DATE & TIME HELPERS (INDIAN FORMATTER)
-// ----------------------------------------------------
 function formatIndianDateTime(dateObj) {
     if (!dateObj || isNaN(dateObj.getTime())) return 'N/A';
-    
     return dateObj.toLocaleString('en-IN', {
         timeZone: 'Asia/Kolkata',
         day: '2-digit',
@@ -254,71 +247,49 @@ function formatIndianDateTime(dateObj) {
 
 function parseRecordDate(timestampStr) {
     if (!timestampStr) return null;
-
     const cleanStr = String(timestampStr).trim();
     if (cleanStr.includes('T')) {
         const directDate = new Date(cleanStr);
         if (!isNaN(directDate.getTime())) return directDate;
     }
-
     const parts = cleanStr.split(/[\s,/:-]+/);
     if (parts.length >= 3) {
         let p1 = parseInt(parts[0], 10);
         let p2 = parseInt(parts[1], 10);
         let p3 = parseInt(parts[2], 10);
-
         let year, month, day;
 
         if (p1 > 1000) {
-            year = p1;
-            month = p2 - 1;
-            day = p3;
+            year = p1; month = p2 - 1; day = p3;
         } else {
             year = p3 < 100 ? p3 + 2000 : p3;
-
             if (p1 > 12) {
-                day = p1;
-                month = p2 - 1;
+                day = p1; month = p2 - 1;
             } else if (p2 > 12) {
-                month = p1 - 1;
-                day = p2;
+                month = p1 - 1; day = p2;
             } else {
-                if (p1 === 8 || p1 === 7) {
-                    month = p1 - 1;
-                    day = p2;
-                } else {
-                    day = p1;
-                    month = p2 - 1;
-                }
+                if (p1 === 8 || p1 === 7) { month = p1 - 1; day = p2; }
+                else { day = p1; month = p2 - 1; }
             }
         }
 
-        let hours = 0;
-        let minutes = 0;
-        let seconds = 0;
-
+        let hours = 0, minutes = 0, seconds = 0;
         if (parts.length >= 5) {
             hours = parseInt(parts[3], 10) || 0;
             minutes = parseInt(parts[4], 10) || 0;
             seconds = parseInt(parts[5], 10) || 0;
-
-            const isPM = /pm/i.test(cleanStr);
-            const isAM = /am/i.test(cleanStr);
-
-            if (isPM && hours < 12) hours += 12;
-            if (isAM && hours === 12) hours = 0;
+            if (/pm/i.test(cleanStr) && hours < 12) hours += 12;
+            if (/am/i.test(cleanStr) && hours === 12) hours = 0;
         }
-
         const parsed = new Date(year, month, day, hours, minutes, seconds);
         if (!isNaN(parsed.getTime())) return parsed;
     }
-
     const fallbackDate = new Date(cleanStr);
     return isNaN(fallbackDate.getTime()) ? null : fallbackDate;
 }
 
 // ----------------------------------------------------
-// USER PROFILE ENGINE
+// USER PROFILE ENGINE & PRIVATE STATS
 // ----------------------------------------------------
 function renderUserProfileData() {
     if (!currentUser) return;
@@ -335,12 +306,20 @@ function renderUserProfileData() {
     if (avatarImg) {
         avatarImg.src = currentUser.profileImg || DEFAULT_AVATAR;
     }
+
+    const vipPanel = document.getElementById('user-unlocked-features-panel');
+    if (vipPanel) {
+        if (currentUser.unlockedFeatures === 'vip') {
+            vipPanel.classList.remove('hidden');
+        } else {
+            vipPanel.classList.add('hidden');
+        }
+    }
 }
 
 function toggleEditProfileDeck() {
     const deck = document.getElementById('edit-profile-deck');
     if (!deck) return;
-
     const isHidden = deck.classList.contains('hidden');
     if (isHidden) {
         document.getElementById('edit-profile-name').value = currentUser.name || '';
@@ -358,18 +337,14 @@ function toggleEditProfileDeck() {
 function handleImageUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
-    reader.onload = function(event) {
-        uploadedProfileBase64 = event.target.result;
-    };
+    reader.onload = function(event) { uploadedProfileBase64 = event.target.result; };
     reader.readAsDataURL(file);
 }
 
 function handleAdminImageUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = function(event) {
         adminUploadedProfileBase64 = event.target.result;
@@ -398,25 +373,17 @@ function saveUserProfileChanges() {
         return;
     }
 
-    const updates = {
-        name: name,
-        email: email,
-        phone: phone,
-        dob: dob
-    };
-
-    if (uploadedProfileBase64) {
-        updates.profileImg = uploadedProfileBase64;
-    }
+    const updates = { name: name, email: email, phone: phone, dob: dob };
+    if (uploadedProfileBase64) updates.profileImg = uploadedProfileBase64;
 
     database.ref('users/' + currentUser.username).update(updates).then(() => {
         currentUser = { ...currentUser, ...updates };
         localStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
         renderUserProfileData();
-        msg.innerText = "🟢 PROFILE MATRIX UPDATED SUCCESSFULLY!";
+        if (msg) msg.innerText = "🟢 PROFILE MATRIX UPDATED SUCCESSFULLY!";
         setTimeout(() => {
             toggleEditProfileDeck();
-            msg.innerText = "";
+            if (msg) msg.innerText = "";
         }, 1200);
     }).catch(err => {
         alert("Update Error: " + err.message);
@@ -434,22 +401,21 @@ function switchSignatureMode(mode) {
     const uploadContainer = document.getElementById('sig-upload-container');
 
     if (mode === 'draw') {
-        drawBtn.classList.add('active');
-        uploadBtn.classList.remove('active');
-        drawContainer.classList.remove('hidden');
-        uploadContainer.classList.add('hidden');
+        drawBtn?.classList.add('active');
+        uploadBtn?.classList.remove('active');
+        drawContainer?.classList.remove('hidden');
+        uploadContainer?.classList.add('hidden');
     } else {
-        uploadBtn.classList.add('active');
-        drawBtn.classList.remove('active');
-        uploadContainer.classList.remove('hidden');
-        drawContainer.classList.add('hidden');
+        uploadBtn?.classList.add('active');
+        drawBtn?.classList.remove('active');
+        uploadContainer?.classList.remove('hidden');
+        drawContainer?.classList.add('hidden');
     }
 }
 
 function handleSignatureFileUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = function(event) {
         const img = new Image();
@@ -458,34 +424,25 @@ function handleSignatureFileUpload(e) {
             const tempCtx = tempCanvas.getContext('2d');
             tempCanvas.width = img.width;
             tempCanvas.height = img.height;
-
             tempCtx.drawImage(img, 0, 0);
             const imgData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
             const data = imgData.data;
 
             for (let i = 0; i < data.length; i += 4) {
-                const r = data[i];
-                const g = data[i + 1];
-                const b = data[i + 2];
-                const brightness = (r + g + b) / 3;
-
+                const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
                 if (brightness > 180) {
                     data[i + 3] = 0;
                 } else {
-                    data[i] = 0;
-                    data[i + 1] = 240;
-                    data[i + 2] = 255;
-                    data[i + 3] = 255;
+                    data[i] = 0; data[i + 1] = 240; data[i + 2] = 255; data[i + 3] = 255;
                 }
             }
-
             tempCtx.putImageData(imgData, 0, 0);
             uploadedSignatureBase64 = tempCanvas.toDataURL();
 
             const previewImg = document.getElementById('sig-preview-img');
             const previewWrapper = document.getElementById('sig-preview-wrapper');
-            previewImg.src = uploadedSignatureBase64;
-            previewWrapper.classList.remove('hidden');
+            if (previewImg) previewImg.src = uploadedSignatureBase64;
+            previewWrapper?.classList.remove('hidden');
         };
         img.src = event.target.result;
     };
@@ -495,11 +452,9 @@ function handleSignatureFileUpload(e) {
 function initSignatureEngine() {
     if (!canvas) return;
     ctx.strokeStyle = '#00ff66';
-    
     canvas.addEventListener('mousedown', () => drawing = true);
     canvas.addEventListener('mouseup', () => { drawing = false; ctx.beginPath(); });
     canvas.addEventListener('mousemove', draw);
-
     canvas.addEventListener('touchstart', (e) => { drawing = true; e.preventDefault(); });
     canvas.addEventListener('touchend', () => { drawing = false; ctx.beginPath(); });
     canvas.addEventListener('touchmove', (e) => {
@@ -552,6 +507,8 @@ function listenToUserProfiles() {
             const user = childSnapshot.val();
             const uId = childSnapshot.key;
             const userAvatar = user.profileImg || DEFAULT_AVATAR;
+            const isLocked = user.isLocked === true || user.isLocked === "true";
+            const featStatus = user.unlockedFeatures === 'vip' ? '🚀 VIP' : 'Standard';
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -563,17 +520,29 @@ function listenToUserProfiles() {
                     📱 ${user.phone || 'N/A'}<br>
                     🎂 ${user.dob || 'N/A'}
                 </td>
-                <td><span class="${user.role === 'admin' ? 'txt-pink' : 'txt-green'}">${user.role?.toUpperCase()}</span></td>
+                <td>
+                    <span style="color:${isLocked ? '#ff3366' : '#00ff66'}; font-weight:bold;">
+                        ${isLocked ? '🔒 LOCKED' : '🟢 ACTIVE'}
+                    </span>
+                </td>
+                <td><span class="${user.unlockedFeatures === 'vip' ? 'txt-pink' : 'txt-muted'}" style="font-size:12px; font-weight:bold;">${featStatus}</span></td>
                 <td>${user.securityAnswer || 'N/A'}</td>
                 <td>
-                    <button class="btn-table-edit" onclick="editUserProfile('${uId}')">EDIT</button>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                        <button class="btn-table-edit" onclick="editUserProfile('${uId}')">EDIT</button>
+                        <button class="${isLocked ? 'btn-table-req' : 'btn-table-del'}" onclick="toggleUserLock('${uId}', ${!isLocked})">
+                            ${isLocked ? '🔓 UNLOCK' : '🔒 LOCK'}
+                        </button>
+                        <button class="btn-table-edit" style="border-color:var(--neon-pink); color:var(--neon-pink);" onclick="toggleUserFeature('${uId}', '${user.unlockedFeatures === 'vip' ? 'standard' : 'vip'}')">
+                            ${user.unlockedFeatures === 'vip' ? 'REVOKE VIP' : 'GRANT VIP'}
+                        </button>
+                    </div>
                 </td>
             `;
             tbody.appendChild(tr);
         });
     });
 
-    // Listen to Payment Requests Queue in Admin Panel
     database.ref('paymentRequests').on('value', (snapshot) => {
         const tbody = document.getElementById('admin-payments-body');
         if (!tbody) return;
@@ -581,7 +550,6 @@ function listenToUserProfiles() {
 
         snapshot.forEach((childSnapshot) => {
             const req = childSnapshot.val();
-            const reqKey = childSnapshot.key;
             const dateObj = parseRecordDate(req.timestamp);
             const displayTime = formatIndianDateTime(dateObj);
 
@@ -605,11 +573,30 @@ function listenToUserProfiles() {
     });
 }
 
+function toggleUserLock(username, newStatus) {
+    const actionName = newStatus ? "LOCK" : "UNLOCK";
+    if (confirm(`Kya aap sure hain ki is User [${username}] ko ${actionName} karna chahte hain?`)) {
+        database.ref('users/' + username).update({ isLocked: newStatus }).then(() => {
+            alert(`User [${username}] has been ${actionName}ED successfully!`);
+        });
+    }
+}
+
+function toggleUserFeature(username, newFeatureState) {
+    database.ref('users/' + username).update({ unlockedFeatures: newFeatureState }).then(() => {
+        alert(`User [${username}] feature updated to: ${newFeatureState.toUpperCase()}`);
+    });
+}
+
 function prefillUserProvisioning(username, name, email, phone) {
-    document.getElementById('signup-username').value = username;
-    document.getElementById('signup-name').value = name;
-    document.getElementById('signup-email').value = email;
-    document.getElementById('signup-phone').value = phone;
+    const uInp = document.getElementById('signup-username');
+    const nInp = document.getElementById('signup-name');
+    const eInp = document.getElementById('signup-email');
+    const pInp = document.getElementById('signup-phone');
+    if (uInp) uInp.value = username;
+    if (nInp) nInp.value = name;
+    if (eInp) eInp.value = email;
+    if (pInp) pInp.value = phone;
     window.scrollTo({ top: 450, behavior: 'smooth' });
 }
 
@@ -619,12 +606,10 @@ function prefillUserProvisioning(username, name, email, phone) {
 function populateFilterDropdowns(records) {
     const userSelect = document.getElementById('filter-user');
     const yearSelect = document.getElementById('filter-year');
-
     if (!userSelect || !yearSelect) return;
 
     const currentUserVal = userSelect.value;
     const currentYearVal = yearSelect.value;
-
     const usersSet = new Set();
     const yearsSet = new Set();
 
@@ -637,16 +622,14 @@ function populateFilterDropdowns(records) {
     userSelect.innerHTML = '<option value="ALL">All Operators</option>';
     Array.from(usersSet).sort().forEach(user => {
         const opt = document.createElement('option');
-        opt.value = user;
-        opt.innerText = user;
+        opt.value = user; opt.innerText = user;
         userSelect.appendChild(opt);
     });
 
     yearSelect.innerHTML = '<option value="ALL">All Years</option>';
     Array.from(yearsSet).sort((a, b) => b - a).forEach(year => {
         const opt = document.createElement('option');
-        opt.value = year;
-        opt.innerText = year;
+        opt.value = year; opt.innerText = year;
         yearSelect.appendChild(opt);
     });
 
@@ -707,38 +690,47 @@ function resetFilters() {
 // AUTHENTICATION & SESSIONS
 // ----------------------------------------------------
 function showForgetPassword() {
-    document.getElementById('login-form-group').classList.add('hidden');
-    document.getElementById('forget-form-group').classList.remove('hidden');
-    document.getElementById('auth-error').innerText = "";
+    document.getElementById('login-form-group')?.classList.add('hidden');
+    document.getElementById('forget-form-group')?.classList.remove('hidden');
+    const err = document.getElementById('auth-error');
+    if (err) err.innerText = "";
 }
 
 function hideForgetPassword() {
-    document.getElementById('forget-form-group').classList.add('hidden');
-    document.getElementById('login-form-group').classList.remove('hidden');
-    document.getElementById('auth-error').innerText = "";
+    document.getElementById('forget-form-group')?.classList.add('hidden');
+    document.getElementById('login-form-group')?.classList.remove('hidden');
+    const err = document.getElementById('auth-error');
+    if (err) err.innerText = "";
 }
 
 function handleLogin() {
-    const userInp = document.getElementById('login-username').value.trim().toLowerCase();
-    const passInp = document.getElementById('login-password').value;
+    const userInp = document.getElementById('login-username')?.value.trim().toLowerCase();
+    const passInp = document.getElementById('login-password')?.value;
     const err = document.getElementById('auth-error');
 
     if (!userInp || !passInp) {
-        err.innerText = "🚨 ACCESS DENIED: Empty Matrix Loops!";
+        if (err) err.innerText = "🚨 ACCESS DENIED: Empty Matrix Loops!";
         return;
     }
 
     database.ref('users/' + userInp).once('value').then((snapshot) => {
         if (snapshot.exists()) {
             const userData = snapshot.val();
+            
+            // Check Lock Condition
+            if (userData.isLocked === true || userData.isLocked === "true") {
+                if (err) err.innerText = "🔒 ACCESS LOCKED: Your Node has been restricted by Admin!";
+                return;
+            }
+
             if (userData.password === passInp) {
                 currentUser = userData;
                 currentUser.username = userInp;
-                err.innerText = "";
+                if (err) err.innerText = "";
                 localStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
                 launchAppForUser();
             } else {
-                err.innerText = "🚨 ACCESS DENIED: PASSCODE INVALID!";
+                if (err) err.innerText = "🚨 ACCESS DENIED: PASSCODE INVALID!";
             }
         } else {
             if (userInp === 'cybhacx' && passInp === 'cybhacx@#Ravi') {
@@ -746,23 +738,23 @@ function handleLogin() {
                 localStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
                 launchAppForUser();
             } else {
-                err.innerText = "🚨 ACCESS DENIED: NODE IDENTITY NOT DEPLOYED!";
+                if (err) err.innerText = "🚨 ACCESS DENIED: NODE IDENTITY NOT DEPLOYED!";
             }
         }
     }).catch(e => {
-        err.innerText = "🚨 FAULT: Database connection error!";
+        if (err) err.innerText = "🚨 FAULT: Database connection error!";
         console.error(e);
     });
 }
 
 function launchAppForUser() {
-    document.getElementById('auth-screen').classList.add('hidden');
+    document.getElementById('auth-screen')?.classList.add('hidden');
     if (currentUser.role === 'admin') {
-        document.getElementById('admin-screen').classList.remove('hidden');
+        document.getElementById('admin-screen')?.classList.remove('hidden');
         listenToLiveDatabase();
         listenToUserProfiles();
     } else {
-        document.getElementById('user-screen').classList.remove('hidden');
+        document.getElementById('user-screen')?.classList.remove('hidden');
         renderUserProfileData();
         initSignatureEngine();
         listenToUserRecords();
@@ -770,7 +762,7 @@ function launchAppForUser() {
 }
 
 // ----------------------------------------------------
-// USER SPECIFIC ACTIONS
+// USER SPECIFIC ACTIONS & PRIVATE LEDGER
 // ----------------------------------------------------
 function listenToUserRecords() {
     database.ref('savingRecords').on('value', () => {
@@ -781,15 +773,27 @@ function listenToUserRecords() {
 function renderUserLedger() {
     const searchQuery = document.getElementById('user-search-input')?.value.toLowerCase().trim() || "";
     const tbody = document.getElementById('user-records-body');
+    const userTotalSavingsText = document.getElementById('user-total-savings');
+    const userTotalEntriesText = document.getElementById('user-total-entries');
+    
     if (!tbody) return;
     tbody.innerHTML = "";
 
     database.ref('savingRecords').once('value').then(snapshot => {
+        let personalTotalAmount = 0;
+        let personalTotalCount = 0;
+        currentUserRecordsCache = [];
+
         snapshot.forEach(childSnapshot => {
             const item = childSnapshot.val();
             const key = childSnapshot.key;
 
+            // Strict Filter: Only this user's records
             if (item.username === currentUser.name) {
+                personalTotalAmount += (parseFloat(item.amount) || 0);
+                personalTotalCount++;
+                currentUserRecordsCache.push(item);
+
                 const dateObj = parseRecordDate(item.timestamp);
                 const displayTime = formatIndianDateTime(dateObj);
 
@@ -815,6 +819,9 @@ function renderUserLedger() {
                 tbody.appendChild(tr);
             }
         });
+
+        if (userTotalSavingsText) userTotalSavingsText.innerText = personalTotalAmount.toLocaleString('en-IN');
+        if (userTotalEntriesText) userTotalEntriesText.innerText = personalTotalCount;
     });
 }
 
@@ -827,6 +834,35 @@ function requestDeleteEntry(key) {
             renderUserLedger();
         });
     }
+}
+
+function downloadUserFilteredData() {
+    if (!currentUserRecordsCache || currentUserRecordsCache.length === 0) {
+        alert("Aapka koi personal record download ke liye uplabdh nahi hai!");
+        return;
+    }
+
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Timestamp,Amount,Status\r\n";
+
+    currentUserRecordsCache.forEach(r => {
+        const dateObj = parseRecordDate(r.timestamp);
+        const displayTime = formatIndianDateTime(dateObj);
+        const row = [
+            `"${displayTime}"`,
+            r.amount || 0,
+            `"${r.status || 'SECURED'}"`
+        ];
+        csvContent += row.join(",") + "\r\n";
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `My_Savings_${currentUser.username}_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 // ----------------------------------------------------
@@ -843,21 +879,24 @@ function deleteRecordByAdmin(key) {
 }
 
 function handleAdminCreateUser() {
-    const username = document.getElementById('signup-username').value.trim().toLowerCase();
-    const name = document.getElementById('signup-name').value.trim();
-    const email = document.getElementById('signup-email').value.trim();
-    const phone = document.getElementById('signup-phone').value.trim();
-    const dob = document.getElementById('signup-dob').value;
-    const security = document.getElementById('signup-security').value.trim().toLowerCase();
-    const password = document.getElementById('signup-password').value;
-    const role = document.getElementById('signup-role').value;
+    const username = document.getElementById('signup-username')?.value.trim().toLowerCase();
+    const name = document.getElementById('signup-name')?.value.trim();
+    const email = document.getElementById('signup-email')?.value.trim();
+    const phone = document.getElementById('signup-phone')?.value.trim();
+    const dob = document.getElementById('signup-dob')?.value;
+    const security = document.getElementById('signup-security')?.value.trim().toLowerCase();
+    const password = document.getElementById('signup-password')?.value;
+    const role = document.getElementById('signup-role')?.value || "user";
+    const isLocked = document.getElementById('signup-is-locked')?.value === "true";
+    const features = document.getElementById('signup-features-unlocked')?.value || "standard";
     
     const err = document.getElementById('admin-create-err');
     const succ = document.getElementById('admin-create-msg');
-    err.innerText = ""; succ.innerText = "";
+    if (err) err.innerText = "";
+    if (succ) succ.innerText = "";
 
     if (!username || !name || !security) {
-        err.innerText = "❌ ERROR: Username, Name and Security answer required!";
+        if (err) err.innerText = "❌ ERROR: Username, Name and Security answer required!";
         return;
     }
 
@@ -867,13 +906,15 @@ function handleAdminCreateUser() {
         phone: phone,
         dob: dob,
         role: role,
+        isLocked: isLocked,
+        unlockedFeatures: features,
         securityAnswer: security
     };
     if (password) payload.password = password;
     if (adminUploadedProfileBase64) payload.profileImg = adminUploadedProfileBase64;
 
     database.ref('users/' + username).update(payload).then(() => {
-        succ.innerText = `✅ ACCOUNT SAVED: [${name}] updated successfully!`;
+        if (succ) succ.innerText = `✅ ACCOUNT SAVED: [${name}] updated successfully!`;
         clearProfileForm();
     });
 }
@@ -891,20 +932,26 @@ function editUserProfile(username) {
         document.getElementById('signup-security').value = user.securityAnswer || "";
         document.getElementById('signup-password').value = user.password || "";
         document.getElementById('signup-role').value = user.role || "user";
+        
+        const lockSel = document.getElementById('signup-is-locked');
+        if (lockSel) lockSel.value = String(user.isLocked || false);
+        
+        const featSel = document.getElementById('signup-features-unlocked');
+        if (featSel) featSel.value = user.unlockedFeatures || "standard";
 
         const previewImg = document.getElementById('admin-preview-img');
         const placeholder = document.getElementById('admin-preview-placeholder');
 
         if (user.profileImg) {
             adminUploadedProfileBase64 = user.profileImg;
-            previewImg.src = user.profileImg;
-            previewImg.classList.remove('hidden');
-            placeholder.classList.add('hidden');
+            if (previewImg) previewImg.src = user.profileImg;
+            previewImg?.classList.remove('hidden');
+            placeholder?.classList.add('hidden');
         } else {
             adminUploadedProfileBase64 = null;
-            previewImg.src = "";
-            previewImg.classList.add('hidden');
-            placeholder.classList.remove('hidden');
+            if (previewImg) previewImg.src = "";
+            previewImg?.classList.add('hidden');
+            placeholder?.classList.remove('hidden');
         }
 
         window.scrollTo({ top: 300, behavior: 'smooth' });
@@ -919,6 +966,13 @@ function clearProfileForm() {
     document.getElementById('signup-dob').value = "";
     document.getElementById('signup-security').value = "";
     document.getElementById('signup-password').value = "";
+    
+    const lockSel = document.getElementById('signup-is-locked');
+    if (lockSel) lockSel.value = "false";
+    
+    const featSel = document.getElementById('signup-features-unlocked');
+    if (featSel) featSel.value = "standard";
+    
     adminUploadedProfileBase64 = null;
     const fileInp = document.getElementById('signup-profile-file');
     if (fileInp) fileInp.value = "";
@@ -963,26 +1017,29 @@ function downloadFilteredData() {
 // FORGET PASSWORD
 // ----------------------------------------------------
 function handleForgetPassword() {
-    const username = document.getElementById('forget-username').value.trim().toLowerCase();
-    const security = document.getElementById('forget-security').value.trim().toLowerCase();
-    const newPass = document.getElementById('forget-new-password').value;
+    const username = document.getElementById('forget-username')?.value.trim().toLowerCase();
+    const security = document.getElementById('forget-security')?.value.trim().toLowerCase();
+    const newPass = document.getElementById('forget-new-password')?.value;
     const err = document.getElementById('auth-error');
     const succ = document.getElementById('auth-success');
 
     if (!username || !security || !newPass) {
-        err.innerText = "🚨 FAULT: Missing verification matrix fields.";
+        if (err) err.innerText = "🚨 FAULT: Missing verification matrix fields.";
         return;
     }
 
     database.ref('users/' + username).once('value').then((snapshot) => {
         if (snapshot.exists() && snapshot.val().securityAnswer === security) {
             database.ref('users/' + username + '/password').set(newPass).then(() => {
-                err.innerText = "";
-                succ.innerText = "🟢 SYSTEM INJECT: PASSCODE MODIFIED!";
-                setTimeout(() => { hideForgetPassword(); succ.innerText = ""; }, 1500);
+                if (err) err.innerText = "";
+                if (succ) succ.innerText = "🟢 SYSTEM INJECT: PASSCODE MODIFIED!";
+                setTimeout(() => { 
+                    hideForgetPassword(); 
+                    if (succ) succ.innerText = ""; 
+                }, 1500);
             });
         } else {
-            err.innerText = "🚨 CRITICAL BREACH: ANSWER SIGNATURE INVALID!";
+            if (err) err.innerText = "🚨 CRITICAL BREACH: ANSWER SIGNATURE INVALID!";
         }
     });
 }
@@ -991,7 +1048,7 @@ function handleForgetPassword() {
 // DAILY ENTRY SUBMISSION
 // ----------------------------------------------------
 function submitDailyEntry() {
-    const amount = document.getElementById('saving-amount').value;
+    const amount = document.getElementById('saving-amount')?.value;
     const msg = document.getElementById('user-msg');
 
     if (!amount || amount <= 0) {
@@ -1021,14 +1078,15 @@ function submitDailyEntry() {
     };
 
     database.ref('savingRecords').push(entry).then(() => {
-        msg.innerText = `🟢 SUCCESS: ₹${amount} saved & synced across cloud grid.`;
-        document.getElementById('saving-amount').value = "";
+        if (msg) msg.innerText = `🟢 SUCCESS: ₹${amount} saved & synced across cloud grid.`;
+        const savInp = document.getElementById('saving-amount');
+        if (savInp) savInp.value = "";
         clearSignature();
         uploadedSignatureBase64 = null;
         document.getElementById('sig-preview-wrapper')?.classList.add('hidden');
         const fileInp = document.getElementById('sig-file-input');
         if (fileInp) fileInp.value = "";
-        setTimeout(() => { msg.innerText = ""; }, 3000);
+        setTimeout(() => { if (msg) msg.innerText = ""; }, 3000);
     });
 }
 
@@ -1080,13 +1138,17 @@ function renderAdminDashboard(records) {
 function logout() {
     currentUser = null;
     localStorage.removeItem('cybhacx_auth_user');
-    document.getElementById('login-username').value = "";
-    document.getElementById('login-password').value = "";
-    document.getElementById('user-screen').classList.add('hidden');
-    document.getElementById('admin-screen').classList.add('hidden');
-    document.getElementById('auth-screen').classList.remove('hidden');
-    document.getElementById('admin-create-err').innerText = "";
-    document.getElementById('admin-create-msg').innerText = "";
+    const uInp = document.getElementById('login-username');
+    const pInp = document.getElementById('login-password');
+    if (uInp) uInp.value = "";
+    if (pInp) pInp.value = "";
+    document.getElementById('user-screen')?.classList.add('hidden');
+    document.getElementById('admin-screen')?.classList.add('hidden');
+    document.getElementById('auth-screen')?.classList.remove('hidden');
+    const aErr = document.getElementById('admin-create-err');
+    const aMsg = document.getElementById('admin-create-msg');
+    if (aErr) aErr.innerText = "";
+    if (aMsg) aMsg.innerText = "";
 }
 
 // ----------------------------------------------------
@@ -1101,7 +1163,13 @@ document.addEventListener('DOMContentLoaded', () => {
             currentUser = JSON.parse(savedUserSession);
             database.ref('users/' + currentUser.username).once('value').then(snapshot => {
                 if (snapshot.exists()) {
-                    currentUser = { ...snapshot.val(), username: currentUser.username };
+                    const latestData = snapshot.val();
+                    if (latestData.isLocked === true || latestData.isLocked === "true") {
+                        logout();
+                        alert("Your ID is locked by administrator.");
+                        return;
+                    }
+                    currentUser = { ...latestData, username: currentUser.username };
                     localStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
                 }
                 launchAppForUser();
