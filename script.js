@@ -12,6 +12,9 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
+// RAZORPAY CONFIGURATION (Apni Razorpay Key ID yahan paste karein)
+const RAZORPAY_KEY_ID = "rzp_live_TW3Dh4C7B3KHW5"; // Replace with your Live or Test Key ID
+
 let currentUser = null;
 let allRecordsCache = [];
 let currentFilteredRecords = [];
@@ -30,17 +33,94 @@ const ctx = canvas?.getContext('2d');
 let drawing = false;
 
 // ----------------------------------------------------
+// PAYMENT MODAL CONTROLLER & RAZORPAY CHECKOUT
+// ----------------------------------------------------
+function showPaymentModal() {
+    document.getElementById('payment-modal').classList.remove('hidden');
+    document.getElementById('payment-form-step').classList.remove('hidden');
+    document.getElementById('payment-success-step').classList.add('hidden');
+    document.getElementById('payment-err').innerText = "";
+}
+
+function hidePaymentModal() {
+    document.getElementById('payment-modal').classList.add('hidden');
+}
+
+function initiateRazorpayPayment() {
+    const name = document.getElementById('pay-name').value.trim();
+    const email = document.getElementById('pay-email').value.trim();
+    const phone = document.getElementById('pay-phone').value.trim();
+    const username = document.getElementById('pay-username').value.trim().toLowerCase();
+    const err = document.getElementById('payment-err');
+
+    if (!name || !email || !phone || !username) {
+        err.innerText = "❌ Please fill all details before proceeding to pay!";
+        return;
+    }
+    err.innerText = "";
+
+    // Razorpay Standard Checkout Options (Amount is in Paise: 10 INR = 1000 Paise)
+    const options = {
+        "key": RAZORPAY_KEY_ID,
+        "amount": "1000",
+        "currency": "INR",
+        "name": "CYBHACX MONEY",
+        "description": "Node Activation Pass (Lifetime)",
+        "image": "https://img.icons8.com/neon/96/00f0ff/cyberpunk.png",
+        "handler": function (response) {
+            // Callback after payment completion
+            handleSuccessfulPayment({
+                paymentId: response.razorpay_payment_id,
+                name: name,
+                email: email,
+                phone: phone,
+                username: username,
+                amount: 10,
+                timestamp: new Date().toISOString()
+            });
+        },
+        "prefill": {
+            "name": name,
+            "email": email,
+            "contact": phone
+        },
+        "theme": {
+            "color": "#ff007f"
+        }
+    };
+
+    try {
+        const rzp1 = new Razorpay(options);
+        rzp1.on('payment.failed', function (response){
+            alert("Payment Failed: " + response.error.description);
+        });
+        rzp1.open();
+    } catch (e) {
+        alert("Razorpay SDK not ready or Key missing: " + e.message);
+    }
+}
+
+function handleSuccessfulPayment(paymentRecord) {
+    // 1. Log Payment Entry to Firebase Database
+    database.ref('paymentRequests').push(paymentRecord).then(() => {
+        document.getElementById('conf-pay-id').innerText = paymentRecord.paymentId;
+        document.getElementById('payment-form-step').classList.add('hidden');
+        document.getElementById('payment-success-step').classList.remove('hidden');
+    }).catch(err => {
+        alert("Database error: " + err.message);
+    });
+}
+
+// ----------------------------------------------------
 // AUTO-INJECT NEON SMOKE & FLOATING PARTICLES ENGINE
 // ----------------------------------------------------
 function setupFuturisticEffects() {
-    // 1. Inject Canvas if missing in HTML
     if (!document.getElementById('cyber-particles-canvas')) {
         const pCanvas = document.createElement('canvas');
         pCanvas.id = 'cyber-particles-canvas';
         document.body.prepend(pCanvas);
     }
 
-    // 2. Inject Multi-Color Smoke Flares inside Auth Screen
     const authScreen = document.getElementById('auth-screen');
     if (authScreen && !authScreen.querySelector('.smoke-cyan')) {
         const colors = ['cyan', 'pink', 'green', 'purple'];
@@ -51,7 +131,6 @@ function setupFuturisticEffects() {
         });
     }
 
-    // 3. Start Particle Physics
     initCyberParticles();
 }
 
@@ -117,7 +196,6 @@ function initCyberParticles() {
             particles[i].update();
             particles[i].draw();
 
-            // Interconnecting subtle laser webs
             for (let j = i + 1; j < particles.length; j++) {
                 const dx = particles[i].x - particles[j].x;
                 const dy = particles[i].y - particles[j].y;
@@ -240,7 +318,7 @@ function parseRecordDate(timestampStr) {
 }
 
 // ----------------------------------------------------
-// 2. USER PROFILE ENGINE & MANAGEMENT
+// USER PROFILE ENGINE
 // ----------------------------------------------------
 function renderUserProfileData() {
     if (!currentUser) return;
@@ -346,7 +424,7 @@ function saveUserProfileChanges() {
 }
 
 // ----------------------------------------------------
-// 3. DUAL SIGNATURE ENGINE (DRAW VS UPLOAD)
+// SIGNATURE ENGINE
 // ----------------------------------------------------
 function switchSignatureMode(mode) {
     currentSigMode = mode;
@@ -392,7 +470,7 @@ function handleSignatureFileUpload(e) {
                 const brightness = (r + g + b) / 3;
 
                 if (brightness > 180) {
-                    data[i + 3] = 0; // Transparent Background
+                    data[i + 3] = 0;
                 } else {
                     data[i] = 0;
                     data[i + 1] = 240;
@@ -449,7 +527,7 @@ function clearSignature() {
 }
 
 // ----------------------------------------------------
-// 4. REALTIME LISTENERS
+// REALTIME LISTENERS & QUEUE
 // ----------------------------------------------------
 function listenToLiveDatabase() {
     database.ref('savingRecords').on('value', (snapshot) => {
@@ -494,10 +572,49 @@ function listenToUserProfiles() {
             tbody.appendChild(tr);
         });
     });
+
+    // Listen to Payment Requests Queue in Admin Panel
+    database.ref('paymentRequests').on('value', (snapshot) => {
+        const tbody = document.getElementById('admin-payments-body');
+        if (!tbody) return;
+        tbody.innerHTML = "";
+
+        snapshot.forEach((childSnapshot) => {
+            const req = childSnapshot.val();
+            const reqKey = childSnapshot.key;
+            const dateObj = parseRecordDate(req.timestamp);
+            const displayTime = formatIndianDateTime(dateObj);
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${displayTime}</td>
+                <td><span class="txt-pink" style="font-weight:bold;">${req.username || 'N/A'}</span></td>
+                <td style="font-size:11px; line-height:1.4;">
+                    👤 ${req.name}<br>
+                    📧 ${req.email}<br>
+                    📱 ${req.phone}
+                </td>
+                <td><code style="color:var(--neon-blue); font-size:11px;">${req.paymentId || 'PAID'}</code></td>
+                <td><span class="txt-green" style="font-weight:bold;">₹10 PAID</span></td>
+                <td>
+                    <button class="btn-table-edit" onclick="prefillUserProvisioning('${req.username}', '${req.name}', '${req.email}', '${req.phone}')">⚡ CREATE USER</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    });
+}
+
+function prefillUserProvisioning(username, name, email, phone) {
+    document.getElementById('signup-username').value = username;
+    document.getElementById('signup-name').value = name;
+    document.getElementById('signup-email').value = email;
+    document.getElementById('signup-phone').value = phone;
+    window.scrollTo({ top: 450, behavior: 'smooth' });
 }
 
 // ----------------------------------------------------
-// 5. MATRIX FILTERS & SEARCH
+// MATRIX FILTERS
 // ----------------------------------------------------
 function populateFilterDropdowns(records) {
     const userSelect = document.getElementById('filter-user');
@@ -587,7 +704,7 @@ function resetFilters() {
 }
 
 // ----------------------------------------------------
-// 6. AUTHENTICATION & SESSIONS
+// AUTHENTICATION & SESSIONS
 // ----------------------------------------------------
 function showForgetPassword() {
     document.getElementById('login-form-group').classList.add('hidden');
@@ -653,7 +770,7 @@ function launchAppForUser() {
 }
 
 // ----------------------------------------------------
-// 7. USER SPECIFIC ACTIONS & DELETE REQUEST
+// USER SPECIFIC ACTIONS
 // ----------------------------------------------------
 function listenToUserRecords() {
     database.ref('savingRecords').on('value', () => {
@@ -713,7 +830,7 @@ function requestDeleteEntry(key) {
 }
 
 // ----------------------------------------------------
-// 8. ADMIN ENTRY DELETE & FULL USER PROFILE OVERWRITE
+// ADMIN CONTROLS
 // ----------------------------------------------------
 function deleteRecordByAdmin(key) {
     if (confirm("⚠️ Kya aap sach me is entry ko database se permanently DELETE karna chahte hain?")) {
@@ -811,9 +928,6 @@ function clearProfileForm() {
     if (placeholder) placeholder.classList.remove('hidden');
 }
 
-// ----------------------------------------------------
-// 9. DOWNLOAD FILTERED DATA AS CSV
-// ----------------------------------------------------
 function downloadFilteredData() {
     if (currentFilteredRecords.length === 0) {
         alert("Download karne ke liye koi records nahi mile!");
@@ -846,7 +960,7 @@ function downloadFilteredData() {
 }
 
 // ----------------------------------------------------
-// 10. FORGET PASSWORD RECOVERY
+// FORGET PASSWORD
 // ----------------------------------------------------
 function handleForgetPassword() {
     const username = document.getElementById('forget-username').value.trim().toLowerCase();
@@ -874,7 +988,7 @@ function handleForgetPassword() {
 }
 
 // ----------------------------------------------------
-// 11. DAILY ENTRY SUBMISSION (Supports Drawn or Uploaded Sign)
+// DAILY ENTRY SUBMISSION
 // ----------------------------------------------------
 function submitDailyEntry() {
     const amount = document.getElementById('saving-amount').value;
@@ -919,7 +1033,7 @@ function submitDailyEntry() {
 }
 
 // ----------------------------------------------------
-// 12. ADMIN DASHBOARD RE-RENDER & PROGRESS BAR
+// ADMIN DASHBOARD
 // ----------------------------------------------------
 function renderAdminDashboard(records) {
     const tbody = document.getElementById('records-body');
@@ -961,7 +1075,7 @@ function renderAdminDashboard(records) {
 }
 
 // ----------------------------------------------------
-// 13. LOGOUT (SESSION CLEAR)
+// LOGOUT
 // ----------------------------------------------------
 function logout() {
     currentUser = null;
@@ -976,13 +1090,11 @@ function logout() {
 }
 
 // ----------------------------------------------------
-// 14. AUTO-LOGIN ON REFRESH & ENTER KEY NAVIGATION
+// INITIAL LOAD
 // ----------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
-    // Dynamic initialization of background particles and neon smoke
     setupFuturisticEffects();
 
-    // Check for existing session in localStorage
     const savedUserSession = localStorage.getItem('cybhacx_auth_user');
     if (savedUserSession) {
         try {

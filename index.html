@@ -16,6 +16,16 @@
         <div id="auth-screen" class="screen card active-screen">
             <h1 class="neon-title">⚡ CYBHACX MONEY</h1>
             <p class="subtitle">SECURE ASSET & ATTENDANCE MAINBOARD</p>
+
+            <!-- Plan Highlight Card -->
+            <div class="plan-promo-card glow-border-green">
+                <div class="plan-promo-header">
+                    <span class="plan-badge">LIMITED OFFER</span>
+                    <span class="plan-price">₹10 <small>/ Per Month </small></span>
+                </div>
+                <p class="plan-desc">Get instant access to attendance logging, saving vault & biometric verification matrix.</p>
+                <button type="button" onclick="showPaymentModal()" class="btn-cyber btn-glow-green btn-plan-pulse">⚡ GET ACCESS PASS (₹10) ⚡</button>
+            </div>
             
             <div id="login-form-group">
                 <div class="input-group">
@@ -59,6 +69,59 @@
             <p id="auth-success" class="success-text"></p>
         </div>
 
+        <!-- ================= PAYMENT & ONBOARDING MODAL ================= -->
+        <div id="payment-modal" class="cyber-modal-overlay hidden">
+            <div class="cyber-modal-card glow-border-pink">
+                <div class="modal-header-flex">
+                    <h3 class="txt-pink" style="margin: 0;">⚡ ACTIVATION PAYMENT </h3>
+                    <button class="btn-modal-close" onclick="hidePaymentModal()">✕</button>
+                </div>
+                <p class="subtitle" style="text-align: left; margin: 8px 0 16px 0;">Enter your details to initiate ₹10 payment & reserve access pass.</p>
+
+                <div id="payment-form-step">
+                    <div class="input-group">
+                        <label>FULL NAME</label>
+                        <input type="text" id="pay-name" placeholder="e.g. Rahul Sharma">
+                    </div>
+                    <div class="input-group">
+                        <label>EMAIL ADDRESS</label>
+                        <input type="email" id="pay-email" placeholder="e.g. rahul@gmail.com">
+                    </div>
+                    <div class="input-group">
+                        <label>CONTACT NUMBER (FOR SMS/WHATSAPP)</label>
+                        <input type="text" id="pay-phone" placeholder="e.g. 98765xxxxx">
+                    </div>
+                    <div class="input-group">
+                        <label>USERNAMES</label>
+                        <input type="text" id="pay-username" placeholder="e.g. rahul_agent">
+                    </div>
+
+                    <div class="plan-price-summary">
+                        <span>PLAN/MONTH</span>
+                        <span class="txt-green" style="font-weight: bold; font-size: 16px;">₹10.00/m</span>
+                    </div>
+
+                    <button type="button" onclick="initiateRazorpayPayment()" class="btn-cyber btn-glow-pink" style="margin-top: 15px;">PROCEED TO SECURE GATEWAY (₹10)</button>
+                    <p id="payment-err" class="error-text"></p>
+                </div>
+
+                <!-- Post-Payment Confirmation Box -->
+                <div id="payment-success-step" class="hidden">
+                    <div class="cyber-success-beacon">
+                        <h2 class="txt-green" style="margin: 0 0 10px 0;">✅ PAYMENT CONFIRMED</h2>
+                        <p class="txt-blue" style="font-size: 14px; font-weight: bold;">ORDER ID / PAYMENT REF: <span id="conf-pay-id" class="txt-pink">PAY_ID</span></p>
+                        <div class="confirmation-notice-box">
+                            <p style="margin: 0; font-size: 13px; line-height: 1.6; color: #ffffff;">
+                                🛡️ <b>Access Matrix Request Synced:</b> Your details and token have been logged in the admin queue.<br><br>
+                                ⏳ <b>Credential Delivery:</b> Our system administrator will verify and issue your User ID & Passcode within <b>1 to 5 minutes</b> via SMS/Email/WhatsApp.
+                            </p>
+                        </div>
+                        <button type="button" onclick="hidePaymentModal()" class="btn-cyber btn-glow-blue" style="margin-top: 20px;">RETURN TO LOGIN</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- ================= 2. USER SCREEN ================= -->
         <div id="user-screen" class="screen hidden">
             <div class="card header">
@@ -66,7 +129,6 @@
                 <button onclick="logout()" class="btn-disconnect">DISCONNECT</button>
             </div>
             
-            <!-- User Digital Identity Card -->
             <div class="card glow-border-blue profile-card">
                 <div class="profile-header-flex">
                     <div class="profile-main-meta">
@@ -133,7 +195,6 @@
                 </div>
             </div>
             
-            <!-- Entry Form with Dual Signature Option -->
             <div class="card cyber-panel">
                 <h3 class="panel-title">// DAILY ATTENDANCE & SAVING INPUT</h3>
                 
@@ -150,13 +211,11 @@
                         <button type="button" id="btn-mode-upload" class="btn-mode-tab" onclick="switchSignatureMode('upload')">📁 UPLOAD IMAGE</button>
                     </div>
 
-                    <!-- Mode 1: Draw Pad -->
                     <div id="sig-draw-container">
                         <canvas id="sig-canvas" width="320" height="150"></canvas>
                         <button type="button" onclick="clearSignature()" class="btn-reset">RESET SIGN PAD</button>
                     </div>
 
-                    <!-- Mode 2: Upload File -->
                     <div id="sig-upload-container" class="hidden">
                         <input type="file" id="sig-file-input" accept="image/*" onchange="handleSignatureFileUpload(event)">
                         <div id="sig-preview-wrapper" class="sig-preview-box hidden">
@@ -169,7 +228,6 @@
                 <p id="user-msg" class="success-text"></p>
             </div>
 
-            <!-- User Records Table -->
             <div class="card glow-border-blue" style="margin-top: 20px;">
                 <div class="filter-header-flex">
                     <h3 class="txt-blue" style="margin:0;">📜 MY LOGGED ENTRIES</h3>
@@ -221,7 +279,7 @@
                 </div>
             </div>
 
-            <!-- Complete Admin User & Profile Matrix Deck -->
+            <!-- Provisioning Desk -->
             <div class="card glow-border-pink" style="margin-top: 15px;">
                 <h3 class="txt-pink" style="margin-top:0;">🛠️ USER PROFILES & CREDENTIAL CONTROLLER</h3>
                 <div class="admin-form-grid">
@@ -281,7 +339,6 @@
                 <p id="admin-create-msg" class="success-text"></p>
                 <p id="admin-create-err" class="error-text"></p>
 
-                <!-- Full User Ledger in Admin View -->
                 <div class="table-container" style="margin-top: 15px;">
                     <table>
                         <thead>
@@ -296,6 +353,27 @@
                             </tr>
                         </thead>
                         <tbody id="user-profiles-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Access Payment Requests Queue in Admin Panel -->
+            <div class="card glow-border-green" style="margin-top: 25px;">
+                <h3 class="txt-green" style="margin-top:0;">💳 ₹10 ACCESS PASS PAYMENT QUEUE</h3>
+                <p class="subtitle" style="text-align:left; margin-bottom: 12px;">Users who completed payment for login credentials.</p>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>TIMESTAMP</th>
+                                <th>PROPOSED ID</th>
+                                <th>NAME & CONTACT</th>
+                                <th>PAYMENT REF</th>
+                                <th>STATUS</th>
+                                <th>QUICK ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-payments-body"></tbody>
                     </table>
                 </div>
             </div>
@@ -373,6 +451,8 @@
 
     </div>
 
+    <!-- Razorpay Standard Checkout SDK -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
