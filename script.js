@@ -51,11 +51,17 @@ function toggleAppTheme() {
     const chosenTheme = isDay ? 'day' : 'night';
     localStorage.setItem('cybhacx_app_theme', chosenTheme);
     updateThemeButtonUI(chosenTheme);
+
+    const primaryColor = isDay ? '#0284c7' : '#00ff66';
+    const gridColor = isDay ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)';
+
     if (userAnalyticsChart) {
-        renderUserVIPAnalytics(currentUserRecordsCache);
+        userAnalyticsChart.data.datasets[0].borderColor = isDay ? '#d90466' : '#00f0ff';
+        userAnalyticsChart.update('none');
     }
-    if (adminMasterChart && currentFilteredRecords) {
-        renderAdminMasterAnalytics(currentFilteredRecords);
+    if (adminMasterChart) {
+        adminMasterChart.data.datasets[0].borderColor = primaryColor;
+        adminMasterChart.update('none');
     }
 }
 
@@ -196,7 +202,7 @@ function handleSuccessfulPayment(paymentRecord) {
 }
 
 // ----------------------------------------------------
-// FUTURISTIC FX & PARTICLES
+// LIGHTWEIGHT FUTURISTIC PARTICLES
 // ----------------------------------------------------
 function setupFuturisticEffects() {
     if (!document.getElementById('cyber-particles-canvas')) {
@@ -223,6 +229,7 @@ function initCyberParticles() {
     if (!pCanvas) return;
     const pCtx = pCanvas.getContext('2d');
 
+    const isMobile = window.innerWidth < 650;
     let width = (pCanvas.width = window.innerWidth);
     let height = (pCanvas.height = window.innerHeight);
 
@@ -231,19 +238,18 @@ function initCyberParticles() {
         height = pCanvas.height = window.innerHeight;
     });
 
-    const colors = ['#00f0ff', '#ff007f', '#00ff66', '#b026ff'];
+    const colors = ['#00f0ff', '#ff007f', '#00ff66'];
     const particles = [];
-    const particleCount = Math.min(60, Math.floor((width * height) / 14000));
+    const particleCount = isMobile ? 18 : 35;
 
     class Particle {
         constructor() {
             this.x = Math.random() * width;
             this.y = Math.random() * height;
-            this.size = Math.random() * 2.2 + 0.8;
-            this.speedX = (Math.random() - 0.5) * 0.75;
-            this.speedY = (Math.random() - 0.5) * 0.75;
+            this.size = Math.random() * 1.8 + 0.8;
+            this.speedX = (Math.random() - 0.5) * 0.45;
+            this.speedY = (Math.random() - 0.5) * 0.45;
             this.color = colors[Math.floor(Math.random() * colors.length)];
-            this.alpha = Math.random() * 0.6 + 0.3;
         }
 
         update() {
@@ -257,15 +263,10 @@ function initCyberParticles() {
         }
 
         draw() {
-            pCtx.save();
-            pCtx.globalAlpha = this.alpha;
-            pCtx.shadowBlur = 10;
-            pCtx.shadowColor = this.color;
             pCtx.fillStyle = this.color;
             pCtx.beginPath();
             pCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
             pCtx.fill();
-            pCtx.restore();
         }
     }
 
@@ -273,32 +274,14 @@ function initCyberParticles() {
         particles.push(new Particle());
     }
 
+    let animationFrameId;
     function animate() {
         pCtx.clearRect(0, 0, width, height);
-
         for (let i = 0; i < particles.length; i++) {
             particles[i].update();
             particles[i].draw();
-
-            for (let j = i + 1; j < particles.length; j++) {
-                const dx = particles[i].x - particles[j].x;
-                const dy = particles[i].y - particles[j].y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-
-                if (dist < 100) {
-                    pCtx.save();
-                    pCtx.globalAlpha = (1 - dist / 100) * 0.18;
-                    pCtx.strokeStyle = particles[i].color;
-                    pCtx.lineWidth = 0.6;
-                    pCtx.beginPath();
-                    pCtx.moveTo(particles[i].x, particles[i].y);
-                    pCtx.lineTo(particles[j].x, particles[j].y);
-                    pCtx.stroke();
-                    pCtx.restore();
-                }
-            }
         }
-        requestAnimationFrame(animate);
+        animationFrameId = requestAnimationFrame(animate);
     }
     animate();
 }
@@ -494,7 +477,7 @@ function saveUserProfileChanges() {
         setTimeout(() => {
             toggleEditProfileDeck();
             if (msg) msg.innerText = "";
-        }, 1200);
+        }, 1000);
     }).catch(err => {
         alert("Update Error: " + err.message);
     });
@@ -603,7 +586,7 @@ function clearSignature() {
 }
 
 // ----------------------------------------------------
-// ACCURATE MONTH INDEX MATCHING (0 = Jan, 8 = Sep, 9 = Oct, etc.)
+// ACCURATE MONTH INDEX MATCHING (0 = Jan, 8 = Sep, 9 = Oct)
 // ----------------------------------------------------
 function matchMonthIndex(monthValue, dateMonthIndex) {
     if (!monthValue || monthValue === 'ALL' || monthValue === 'All Months') return true;
@@ -906,7 +889,12 @@ function renderAdminMasterAnalytics(records) {
     });
     const dataPoints = sorted.map(r => parseFloat(r.amount) || 0);
 
-    if (adminMasterChart) adminMasterChart.destroy();
+    if (adminMasterChart) {
+        adminMasterChart.data.labels = labels.length ? labels : ['No Activity Logged'];
+        adminMasterChart.data.datasets[0].data = dataPoints.length ? dataPoints : [0];
+        adminMasterChart.update('none');
+        return;
+    }
 
     const isDay = document.body.classList.contains('day-mode');
     const primaryColor = isDay ? '#0284c7' : '#00ff66';
@@ -923,12 +911,13 @@ function renderAdminMasterAnalytics(records) {
                 backgroundColor: isDay ? 'rgba(2, 132, 199, 0.12)' : 'rgba(0, 255, 102, 0.15)',
                 borderWidth: 2,
                 fill: true,
-                tension: 0.35
+                tension: 0.3
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: false,
             scales: {
                 x: { grid: { color: gridColor }, ticks: { color: isDay ? '#374151' : '#a1a1aa', font: { size: 10 } } },
                 y: { grid: { color: gridColor }, ticks: { color: isDay ? '#374151' : '#a1a1aa', font: { size: 10 } } }
@@ -1086,7 +1075,6 @@ function renderUserLedger() {
     const userTotalEntriesText = document.getElementById('user-total-entries');
     
     if (!tbody) return;
-    tbody.innerHTML = "";
 
     database.ref('savingRecords').once('value').then(snapshot => {
         let personalTotalAmount = 0;
@@ -1118,6 +1106,8 @@ function renderUserLedger() {
         if (currentUser.unlockedFeatures === 'vip') {
             populateUserVIPYearDropdown(rawUserRecords);
         }
+
+        tbody.innerHTML = "";
 
         rawUserRecords.forEach(item => {
             const key = item._key;
@@ -1197,7 +1187,12 @@ function renderUserVIPAnalytics(records) {
     });
     const dataPoints = sorted.map(r => parseFloat(r.amount) || 0);
 
-    if (userAnalyticsChart) userAnalyticsChart.destroy();
+    if (userAnalyticsChart) {
+        userAnalyticsChart.data.labels = labels.length ? labels : ['No Data'];
+        userAnalyticsChart.data.datasets[0].data = dataPoints.length ? dataPoints : [0];
+        userAnalyticsChart.update('none');
+        return;
+    }
 
     const isDay = document.body.classList.contains('day-mode');
     const primaryColor = isDay ? '#d90466' : '#00f0ff';
@@ -1214,11 +1209,12 @@ function renderUserVIPAnalytics(records) {
                 backgroundColor: isDay ? 'rgba(217, 4, 102, 0.1)' : 'rgba(0, 240, 255, 0.15)',
                 borderWidth: 2,
                 fill: true,
-                tension: 0.35
+                tension: 0.3
             }]
         },
         options: {
             responsive: true,
+            animation: false,
             scales: {
                 x: { grid: { color: gridColor }, ticks: { color: isDay ? '#374151' : '#a1a1aa' } },
                 y: { grid: { color: gridColor }, ticks: { color: isDay ? '#374151' : '#a1a1aa' } }
@@ -1454,7 +1450,7 @@ function handleForgetPassword() {
                 setTimeout(() => { 
                     hideForgetPassword(); 
                     if (succ) succ.innerText = ""; 
-                }, 1500);
+                }, 1200);
             });
         } else {
             if (err) err.innerText = "🚨 CRITICAL BREACH: ANSWER SIGNATURE INVALID!";
@@ -1579,7 +1575,7 @@ function logout() {
 }
 
 // ----------------------------------------------------
-// INITIAL LOAD & AUTO-SESSION
+// INITIAL LOAD & INSTANT AUTO-SESSION (ZERO DELAY)
 // ----------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
     initThemeEngine();
@@ -1589,6 +1585,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (savedUserSession) {
         try {
             currentUser = JSON.parse(savedUserSession);
+            
+            // 1. Instant Screen Render (Firebase response ke wait ke bina)
+            launchAppForUser();
+
+            // 2. Silent Background Verification
             database.ref('users/' + currentUser.username).once('value').then(snapshot => {
                 if (snapshot.exists()) {
                     const latestData = snapshot.val();
@@ -1599,11 +1600,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     currentUser = { ...latestData, username: currentUser.username };
                     localStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
+                    renderUserProfileData();
                 }
-                launchAppForUser();
-            }).catch(() => {
-                launchAppForUser();
-            });
+            }).catch(() => {});
         } catch (e) {
             localStorage.removeItem('cybhacx_auth_user');
         }
