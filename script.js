@@ -12,7 +12,6 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
-// RAZORPAY CONFIGURATION
 const RAZORPAY_KEY_ID = "rzp_live_TW3Dh4C7B3KHW5";
 
 let currentUser = null;
@@ -24,18 +23,17 @@ let adminUploadedProfileBase64 = null;
 let currentSigMode = 'draw';
 let uploadedSignatureBase64 = null;
 let userAnalyticsChart = null;
+let adminMasterChart = null;
 const TARGET_GOAL = 100000;
 
-// Default Avatar SVG
 const DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2300f0ff' viewBox='0 0 16 16'><path d='M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z'/></svg>";
 
-// Canvas Setup
 const canvas = document.getElementById('sig-canvas');
 const ctx = canvas?.getContext('2d');
 let drawing = false;
 
 // ----------------------------------------------------
-// THEME SWITCHER ENGINE (DAY/NIGHT)
+// THEME SWITCHER
 // ----------------------------------------------------
 function initThemeEngine() {
     const savedTheme = localStorage.getItem('cybhacx_app_theme') || 'night';
@@ -56,6 +54,9 @@ function toggleAppTheme() {
     if (userAnalyticsChart) {
         renderUserVIPAnalytics(currentUserRecordsCache);
     }
+    if (adminMasterChart && currentFilteredRecords) {
+        renderAdminMasterAnalytics(currentFilteredRecords);
+    }
 }
 
 function updateThemeButtonUI(theme) {
@@ -72,7 +73,7 @@ function updateThemeButtonUI(theme) {
 }
 
 // ----------------------------------------------------
-// MODAL CONTROLLERS & PLAN ENROLLMENTS
+// MODAL CONTROLLERS
 // ----------------------------------------------------
 function showPaymentModal() {
     document.getElementById('payment-modal')?.classList.remove('hidden');
@@ -232,7 +233,7 @@ function initCyberParticles() {
 
     const colors = ['#00f0ff', '#ff007f', '#00ff66', '#b026ff'];
     const particles = [];
-    const particleCount = Math.min(75, Math.floor((width * height) / 13000));
+    const particleCount = Math.min(60, Math.floor((width * height) / 14000));
 
     class Particle {
         constructor() {
@@ -284,9 +285,9 @@ function initCyberParticles() {
                 const dy = particles[i].y - particles[j].y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
-                if (dist < 110) {
+                if (dist < 100) {
                     pCtx.save();
-                    pCtx.globalAlpha = (1 - dist / 110) * 0.18;
+                    pCtx.globalAlpha = (1 - dist / 100) * 0.18;
                     pCtx.strokeStyle = particles[i].color;
                     pCtx.lineWidth = 0.6;
                     pCtx.beginPath();
@@ -314,64 +315,84 @@ function togglePassVisibility(inputId, btnElement) {
     }
 }
 
+// ----------------------------------------------------
+// STRICT INDIAN FORMATTER (DD/MM/YYYY, hh:mm:ss AM/PM)
+// ----------------------------------------------------
 function formatIndianDateTime(dateObj) {
-    if (!dateObj || isNaN(dateObj.getTime())) return 'N/A';
-    return dateObj.toLocaleString('en-IN', {
-        timeZone: 'Asia/Kolkata',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true
-    });
-}
+    if (!dateObj || !(dateObj instanceof Date) || isNaN(dateObj.getTime())) return 'N/A';
 
-function parseRecordDate(timestampStr) {
-    if (!timestampStr) return null;
-    const cleanStr = String(timestampStr).trim();
-    if (cleanStr.includes('T')) {
-        const directDate = new Date(cleanStr);
-        if (!isNaN(directDate.getTime())) return directDate;
-    }
-    const parts = cleanStr.split(/[\s,/:-]+/);
-    if (parts.length >= 3) {
-        let p1 = parseInt(parts[0], 10);
-        let p2 = parseInt(parts[1], 10);
-        let p3 = parseInt(parts[2], 10);
-        let year, month, day;
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const year = dateObj.getFullYear();
 
-        if (p1 > 1000) {
-            year = p1; month = p2 - 1; day = p3;
-        } else {
-            year = p3 < 100 ? p3 + 2000 : p3;
-            if (p1 > 12) {
-                day = p1; month = p2 - 1;
-            } else if (p2 > 12) {
-                month = p1 - 1; day = p2;
-            } else {
-                day = p1; month = p2 - 1;
-            }
-        }
+    let hours = dateObj.getHours();
+    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+    const seconds = String(dateObj.getSeconds()).padStart(2, '0');
 
-        let hours = 0, minutes = 0, seconds = 0;
-        if (parts.length >= 5) {
-            hours = parseInt(parts[3], 10) || 0;
-            minutes = parseInt(parts[4], 10) || 0;
-            seconds = parseInt(parts[5], 10) || 0;
-            if (/pm/i.test(cleanStr) && hours < 12) hours += 12;
-            if (/am/i.test(cleanStr) && hours === 12) hours = 0;
-        }
-        const parsed = new Date(year, month, day, hours, minutes, seconds);
-        if (!isNaN(parsed.getTime())) return parsed;
-    }
-    const fallbackDate = new Date(cleanStr);
-    return isNaN(fallbackDate.getTime()) ? null : fallbackDate;
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const formattedHours = String(hours).padStart(2, '0');
+
+    return `${day}/${month}/${year}, ${formattedHours}:${minutes}:${seconds} ${ampm}`;
 }
 
 // ----------------------------------------------------
-// USER PROFILE & PRIVATE STATS
+// STRICT DATE PARSER (DD/MM/YYYY & ISO SUPPORT)
+// ----------------------------------------------------
+function parseRecordDate(timestampStr) {
+    if (!timestampStr) return null;
+    if (timestampStr instanceof Date) return isNaN(timestampStr.getTime()) ? null : timestampStr;
+    if (typeof timestampStr === 'number') return new Date(timestampStr);
+
+    const cleanStr = String(timestampStr).trim();
+
+    if (cleanStr.includes('/') || (cleanStr.includes('-') && cleanStr.indexOf('-') <= 2)) {
+        let datePart = cleanStr;
+        let timePartRaw = '';
+
+        if (cleanStr.includes(',')) {
+            const parts = cleanStr.split(',');
+            datePart = parts[0].trim();
+            timePartRaw = (parts[1] || '').trim();
+        } else if (cleanStr.includes(' ')) {
+            const parts = cleanStr.split(' ');
+            datePart = parts[0].trim();
+            timePartRaw = cleanStr.substring(datePart.length).trim();
+        }
+
+        const delimiter = datePart.includes('/') ? '/' : '-';
+        const tokens = datePart.split(delimiter);
+
+        if (tokens.length === 3 && tokens[2].length === 4) {
+            const day = parseInt(tokens[0], 10);
+            const month = parseInt(tokens[1], 10) - 1;
+            const year = parseInt(tokens[2], 10);
+
+            let hours = 0, minutes = 0, seconds = 0;
+            if (timePartRaw) {
+                const timeTokens = timePartRaw.split(/\s+/);
+                const clock = (timeTokens[0] || '').split(':').map(Number);
+                hours = clock[0] || 0;
+                minutes = clock[1] || 0;
+                seconds = clock[2] || 0;
+
+                const meridian = (timeTokens[1] || '').toUpperCase();
+                if (meridian === 'PM' && hours < 12) hours += 12;
+                if (meridian === 'AM' && hours === 12) hours = 0;
+            }
+
+            const parsed = new Date(year, month, day, hours, minutes, seconds);
+            if (!isNaN(parsed.getTime())) return parsed;
+        }
+    }
+
+    const fallback = new Date(cleanStr);
+    return isNaN(fallback.getTime()) ? null : fallback;
+}
+
+// ----------------------------------------------------
+// USER PROFILE & STATS
 // ----------------------------------------------------
 function renderUserProfileData() {
     if (!currentUser) return;
@@ -395,12 +416,14 @@ function renderUserProfileData() {
     }
 
     const vipAnalyticsPanel = document.getElementById('user-vip-analytics-panel');
-    if (vipAnalyticsPanel) {
-        if (isVIP) {
-            vipAnalyticsPanel.classList.remove('hidden');
-        } else {
-            vipAnalyticsPanel.classList.add('hidden');
-        }
+    const vipFilterDeck = document.getElementById('user-vip-filter-deck');
+
+    if (isVIP) {
+        vipAnalyticsPanel?.classList.remove('hidden');
+        vipFilterDeck?.classList.remove('hidden');
+    } else {
+        vipAnalyticsPanel?.classList.add('hidden');
+        vipFilterDeck?.classList.add('hidden');
     }
 }
 
@@ -478,7 +501,7 @@ function saveUserProfileChanges() {
 }
 
 // ----------------------------------------------------
-// SIGNATURE ENGINE (HIGH PRECISION THRESHOLDING)
+// SIGNATURE ENGINE
 // ----------------------------------------------------
 function switchSignatureMode(mode) {
     currentSigMode = mode;
@@ -517,22 +540,19 @@ function handleSignatureFileUpload(e) {
             const imgData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
             const data = imgData.data;
 
-            // Background Removal & Crisp High-Contrast Filter
             for (let i = 0; i < data.length; i += 4) {
                 const r = data[i];
                 const g = data[i + 1];
                 const b = data[i + 2];
                 const brightness = (r * 0.299 + g * 0.587 + b * 0.114);
 
-                // If background paper / line / light reflection
                 if (brightness > 140) {
-                    data[i + 3] = 0; // Alpha 0 = completely transparent
+                    data[i + 3] = 0;
                 } else {
-                    // Pen ink isolation: Vibrant high-tech signature
-                    data[i] = 0;       // R
-                    data[i + 1] = 255; // G (Crisp Neon Green)
-                    data[i + 2] = 102; // B
-                    data[i + 3] = 255; // Full solid opacity
+                    data[i] = 0;
+                    data[i + 1] = 255;
+                    data[i + 2] = 102;
+                    data[i + 3] = 255;
                 }
             }
 
@@ -555,17 +575,18 @@ function initSignatureEngine() {
     canvas.addEventListener('mousedown', () => drawing = true);
     canvas.addEventListener('mouseup', () => { drawing = false; ctx.beginPath(); });
     canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('touchstart', (e) => { drawing = true; e.preventDefault(); });
+    canvas.addEventListener('touchstart', (e) => { drawing = true; e.preventDefault(); }, { passive: false });
     canvas.addEventListener('touchend', () => { drawing = false; ctx.beginPath(); });
     canvas.addEventListener('touchmove', (e) => {
         if (!drawing) return;
+        e.preventDefault();
         const touch = e.touches[0];
         const rect = canvas.getBoundingClientRect();
         ctx.lineWidth = 3; ctx.lineCap = 'round';
         ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
         ctx.stroke(); ctx.beginPath();
         ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
-    });
+    }, { passive: false });
 }
 
 function draw(e) {
@@ -578,11 +599,29 @@ function draw(e) {
 }
 
 function clearSignature() {
-    if (canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
 // ----------------------------------------------------
-// REALTIME LISTENERS
+// ACCURATE MONTH INDEX MATCHING (0 = Jan, 8 = Sep, etc.)
+// ----------------------------------------------------
+function matchMonthIndex(monthValue, dateMonthIndex) {
+    if (!monthValue || monthValue === 'ALL' || monthValue === 'All Months') return true;
+    const monthNames = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+    const valLower = String(monthValue).trim().toLowerCase();
+
+    if (monthNames.includes(valLower)) {
+        return monthNames.indexOf(valLower) === dateMonthIndex;
+    }
+    const num = parseInt(valLower, 10);
+    if (!isNaN(num)) {
+        return (num - 1) === dateMonthIndex;
+    }
+    return false;
+}
+
+// ----------------------------------------------------
+// REALTIME LISTENERS & DYNAMIC FILTER POPULATION
 // ----------------------------------------------------
 function listenToLiveDatabase() {
     database.ref('savingRecords').on('value', (snapshot) => {
@@ -590,8 +629,17 @@ function listenToLiveDatabase() {
         snapshot.forEach((childSnapshot) => {
             const data = childSnapshot.val();
             data._key = childSnapshot.key;
-            allRecordsCache.push(data);
+            if (data.timestamp) {
+                allRecordsCache.push(data);
+            }
         });
+
+        allRecordsCache.sort((a, b) => {
+            const da = parseRecordDate(a.timestamp);
+            const db = parseRecordDate(b.timestamp);
+            return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
+        });
+
         populateFilterDropdowns(allRecordsCache);
         applyMatrixFilters();
     });
@@ -644,7 +692,6 @@ function listenToUserProfiles() {
         });
     });
 
-    // Free Plan Requests Listener
     database.ref('freePlanRequests').on('value', (snapshot) => {
         const tbody = document.getElementById('admin-free-requests-body');
         if (!tbody) return;
@@ -674,7 +721,6 @@ function listenToUserProfiles() {
         });
     });
 
-    // Paid Requests Listener
     database.ref('paymentRequests').on('value', (snapshot) => {
         const tbody = document.getElementById('admin-payments-body');
         if (!tbody) return;
@@ -711,15 +757,13 @@ function prefillFreeUser(username, name, email, phone, dob, reqKey) {
     const featSel = document.getElementById('signup-features-unlocked');
     if (dobInp && dob !== 'N/A') dobInp.value = dob;
     if (featSel) featSel.value = 'standard';
-
-    // Delete request from queue once handled
     database.ref('freePlanRequests/' + reqKey).remove();
 }
 
 function deleteUserByAdmin(username) {
-    if (confirm(`⚠️ DANGER: Kya aap sach me User [${username}] ko permanently DELETE karna chahte hain?`)) {
+    if (confirm(`⚠️ DANGER: Permanently delete User [${username}]?`)) {
         database.ref('users/' + username).remove().then(() => {
-            alert(`User [${username}] successfully deleted from Firebase.`);
+            alert(`User [${username}] deleted successfully.`);
         }).catch(err => {
             alert("Delete Error: " + err.message);
         });
@@ -728,16 +772,16 @@ function deleteUserByAdmin(username) {
 
 function toggleUserLock(username, newStatus) {
     const actionName = newStatus ? "LOCK" : "UNLOCK";
-    if (confirm(`Kya aap sure hain ki is User [${username}] ko ${actionName} karna chahte hain?`)) {
+    if (confirm(`Confirm ${actionName} User [${username}]?`)) {
         database.ref('users/' + username).update({ isLocked: newStatus }).then(() => {
-            alert(`User [${username}] has been ${actionName}ED successfully!`);
+            alert(`User [${username}] ${actionName}ED!`);
         });
     }
 }
 
 function toggleUserFeature(username, newFeatureState) {
     database.ref('users/' + username).update({ unlockedFeatures: newFeatureState }).then(() => {
-        alert(`User [${username}] feature updated to: ${newFeatureState.toUpperCase()}`);
+        alert(`User [${username}] feature level: ${newFeatureState.toUpperCase()}`);
     });
 }
 
@@ -754,7 +798,7 @@ function prefillUserProvisioning(username, name, email, phone) {
 }
 
 // ----------------------------------------------------
-// MATRIX FILTERS
+// DYNAMIC DROPDOWNS: POPULATE ACCURATE DATES
 // ----------------------------------------------------
 function populateFilterDropdowns(records) {
     const userSelect = document.getElementById('filter-user');
@@ -770,7 +814,9 @@ function populateFilterDropdowns(records) {
         if (r.userId) usersSet.add(r.userId);
         else if (r.username) usersSet.add(r.username);
         const parsed = parseRecordDate(r.timestamp);
-        if (parsed) yearsSet.add(parsed.getFullYear());
+        if (parsed) {
+            yearsSet.add(parsed.getFullYear());
+        }
     });
 
     userSelect.innerHTML = '<option value="ALL">All Operators</option>';
@@ -803,16 +849,26 @@ function applyMatrixFilters() {
         if (selectedUser !== 'ALL' && recordUser !== selectedUser) return false;
 
         const dateObj = parseRecordDate(record.timestamp);
+        
+        if ((selectedYear !== 'ALL' || (selectedMonth !== 'ALL' && selectedMonth !== 'All Months') || selectedDate) && !dateObj) {
+            return false;
+        }
+
         if (dateObj) {
             if (selectedYear !== 'ALL' && dateObj.getFullYear() !== parseInt(selectedYear, 10)) return false;
-            if (selectedMonth !== 'ALL' && dateObj.getMonth() !== parseInt(selectedMonth, 10)) return false;
+            if (!matchMonthIndex(selectedMonth, dateObj.getMonth())) return false;
             if (selectedDate) {
-                const pickerDate = new Date(selectedDate);
-                if (
-                    dateObj.getFullYear() !== pickerDate.getFullYear() ||
-                    dateObj.getMonth() !== pickerDate.getMonth() ||
-                    dateObj.getDate() !== pickerDate.getDate()
-                ) return false;
+                const parts = selectedDate.split('-');
+                if (parts.length === 3) {
+                    const selY = parseInt(parts[0], 10);
+                    const selM = parseInt(parts[1], 10) - 1;
+                    const selD = parseInt(parts[2], 10);
+                    if (
+                        dateObj.getFullYear() !== selY ||
+                        dateObj.getMonth() !== selM ||
+                        dateObj.getDate() !== selD
+                    ) return false;
+                }
             }
         }
 
@@ -829,6 +885,58 @@ function applyMatrixFilters() {
     });
 
     renderAdminDashboard(currentFilteredRecords);
+    renderAdminMasterAnalytics(currentFilteredRecords);
+}
+
+function renderAdminMasterAnalytics(records) {
+    const chartCanvas = document.getElementById('admin-master-chart');
+    if (!chartCanvas) return;
+
+    const sorted = [...records].sort((a, b) => {
+        const da = parseRecordDate(a.timestamp);
+        const db = parseRecordDate(b.timestamp);
+        return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
+    });
+
+    const labels = sorted.map(r => {
+        const d = parseRecordDate(r.timestamp);
+        const name = r.username || r.userId || 'Agent';
+        return d ? `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()} (${name})` : 'N/A';
+    });
+    const dataPoints = sorted.map(r => parseFloat(r.amount) || 0);
+
+    if (adminMasterChart) adminMasterChart.destroy();
+
+    const isDay = document.body.classList.contains('day-mode');
+    const primaryColor = isDay ? '#0284c7' : '#00ff66';
+    const gridColor = isDay ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)';
+
+    adminMasterChart = new Chart(chartCanvas, {
+        type: 'line',
+        data: {
+            labels: labels.length ? labels : ['No Activity Logged'],
+            datasets: [{
+                label: 'Filtered Vault Inflow (₹)',
+                data: dataPoints.length ? dataPoints : [0],
+                borderColor: primaryColor,
+                backgroundColor: isDay ? 'rgba(2, 132, 199, 0.12)' : 'rgba(0, 255, 102, 0.15)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.35
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { grid: { color: gridColor }, ticks: { color: isDay ? '#374151' : '#a1a1aa', font: { size: 10 } } },
+                y: { grid: { color: gridColor }, ticks: { color: isDay ? '#374151' : '#a1a1aa', font: { size: 10 } } }
+            },
+            plugins: {
+                legend: { labels: { color: isDay ? '#111827' : '#ffffff', font: { size: 11 } } }
+            }
+        }
+    });
 }
 
 function resetFilters() {
@@ -842,7 +950,7 @@ function resetFilters() {
 }
 
 // ----------------------------------------------------
-// AUTHENTICATION & LOGIN
+// AUTHENTICATION
 // ----------------------------------------------------
 function showForgetPassword() {
     document.getElementById('login-form-group')?.classList.add('hidden');
@@ -910,21 +1018,68 @@ function launchAppForUser() {
         document.getElementById('user-screen')?.classList.remove('hidden');
         renderUserProfileData();
         initSignatureEngine();
+        bindUserFilterEvents();
         listenToUserRecords();
     }
 }
 
 // ----------------------------------------------------
-// STRICT ISOLATED USER LEDGER & VIP ANALYTICS
+// STRICT USER LEDGER & VIP FILTERS
 // ----------------------------------------------------
+function bindUserFilterEvents() {
+    const ySel = document.getElementById('user-filter-year');
+    const mSel = document.getElementById('user-filter-month');
+    const dInp = document.getElementById('user-filter-date');
+    const sInp = document.getElementById('user-search-input');
+
+    if (ySel) ySel.onchange = renderUserLedger;
+    if (mSel) mSel.onchange = renderUserLedger;
+    if (dInp) dInp.onchange = renderUserLedger;
+    if (sInp) sInp.oninput = renderUserLedger;
+}
+
 function listenToUserRecords() {
     database.ref('savingRecords').on('value', () => {
         renderUserLedger();
     });
 }
 
+function populateUserVIPYearDropdown(records) {
+    const yearSelect = document.getElementById('user-filter-year');
+    if (!yearSelect) return;
+    const currentVal = yearSelect.value;
+    const yearsSet = new Set();
+
+    records.forEach(r => {
+        const parsed = parseRecordDate(r.timestamp);
+        if (parsed) yearsSet.add(parsed.getFullYear());
+    });
+
+    yearSelect.innerHTML = '<option value="ALL">All Years</option>';
+    Array.from(yearsSet).sort((a, b) => b - a).forEach(year => {
+        const opt = document.createElement('option');
+        opt.value = year; opt.innerText = year;
+        yearSelect.appendChild(opt);
+    });
+
+    if (Array.from(yearsSet).map(String).includes(currentVal)) yearSelect.value = currentVal;
+}
+
+function resetUserVIPFilters() {
+    if (document.getElementById('user-filter-year')) document.getElementById('user-filter-year').value = 'ALL';
+    if (document.getElementById('user-filter-month')) document.getElementById('user-filter-month').value = 'ALL';
+    if (document.getElementById('user-filter-date')) document.getElementById('user-filter-date').value = '';
+    const sInp = document.getElementById('user-search-input');
+    if (sInp) sInp.value = '';
+    renderUserLedger();
+}
+
 function renderUserLedger() {
     const searchQuery = document.getElementById('user-search-input')?.value.toLowerCase().trim() || "";
+    const selectedYear = document.getElementById('user-filter-year')?.value || 'ALL';
+    const selectedMonth = document.getElementById('user-filter-month')?.value || 'ALL';
+    const selectedDate = document.getElementById('user-filter-date')?.value || '';
+
     const tbody = document.getElementById('user-records-body');
     const userTotalSavingsText = document.getElementById('user-total-savings');
     const userTotalEntriesText = document.getElementById('user-total-entries');
@@ -936,43 +1091,84 @@ function renderUserLedger() {
         let personalTotalAmount = 0;
         let personalTotalCount = 0;
         currentUserRecordsCache = [];
+        let rawUserRecords = [];
+
+        const myUName = (currentUser.username || '').toLowerCase();
+        const myName = (currentUser.name || '').toLowerCase();
 
         snapshot.forEach(childSnapshot => {
             const item = childSnapshot.val();
-            const key = childSnapshot.key;
+            item._key = childSnapshot.key;
+            
+            const rUid = (item.userId || '').toLowerCase();
+            const rUname = (item.username || '').toLowerCase();
 
-            // Strict Isolation Check: Match system ID (username)
-            const matchesUser = item.userId === currentUser.username || (!item.userId && item.username === currentUser.name);
-
-            if (matchesUser) {
-                personalTotalAmount += (parseFloat(item.amount) || 0);
-                personalTotalCount++;
-                currentUserRecordsCache.push(item);
-
-                const dateObj = parseRecordDate(item.timestamp);
-                const displayTime = formatIndianDateTime(dateObj);
-
-                if (searchQuery) {
-                    const matchTime = item.timestamp?.toLowerCase().includes(searchQuery) || displayTime.toLowerCase().includes(searchQuery);
-                    const matchAmt = String(item.amount).includes(searchQuery);
-                    if (!matchTime && !matchAmt) return;
-                }
-
-                const tr = document.createElement('tr');
-                const isRequested = item.deleteRequested === true;
-
-                tr.innerHTML = `
-                    <td>${displayTime}</td>
-                    <td class="txt-green" style="font-weight:bold;">₹${(item.amount || 0).toLocaleString('en-IN')}</td>
-                    <td><span style="color:${isRequested ? '#ffaa00' : '#00ff66'};">${isRequested ? '// REQ DELETION' : '// SECURED'}</span></td>
-                    <td>
-                        ${isRequested 
-                            ? '<span style="color:#ffaa00; font-size:11px;">Request Pending</span>' 
-                            : `<button class="btn-table-req" onclick="requestDeleteEntry('${key}')">Request Delete</button>`}
-                    </td>
-                `;
-                tbody.appendChild(tr);
+            if (rUid === myUName || rUname === myUName || (myName && rUname === myName)) {
+                rawUserRecords.push(item);
             }
+        });
+
+        rawUserRecords.sort((a, b) => {
+            const da = parseRecordDate(a.timestamp);
+            const db = parseRecordDate(b.timestamp);
+            return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
+        });
+
+        if (currentUser.unlockedFeatures === 'vip') {
+            populateUserVIPYearDropdown(rawUserRecords);
+        }
+
+        rawUserRecords.forEach(item => {
+            const key = item._key;
+            const dateObj = parseRecordDate(item.timestamp);
+            const displayTime = formatIndianDateTime(dateObj);
+
+            if ((selectedYear !== 'ALL' || (selectedMonth !== 'ALL' && selectedMonth !== 'All Months') || selectedDate) && !dateObj) {
+                return;
+            }
+
+            if (dateObj) {
+                if (selectedYear !== 'ALL' && dateObj.getFullYear() !== parseInt(selectedYear, 10)) return;
+                if (!matchMonthIndex(selectedMonth, dateObj.getMonth())) return;
+                if (selectedDate) {
+                    const parts = selectedDate.split('-');
+                    if (parts.length === 3) {
+                        const selY = parseInt(parts[0], 10);
+                        const selM = parseInt(parts[1], 10) - 1;
+                        const selD = parseInt(parts[2], 10);
+                        if (
+                            dateObj.getFullYear() !== selY ||
+                            dateObj.getMonth() !== selM ||
+                            dateObj.getDate() !== selD
+                        ) return;
+                    }
+                }
+            }
+
+            if (searchQuery) {
+                const matchTime = item.timestamp?.toLowerCase().includes(searchQuery) || displayTime.toLowerCase().includes(searchQuery);
+                const matchAmt = String(item.amount).includes(searchQuery);
+                if (!matchTime && !matchAmt) return;
+            }
+
+            personalTotalAmount += (parseFloat(item.amount) || 0);
+            personalTotalCount++;
+            currentUserRecordsCache.push(item);
+
+            const tr = document.createElement('tr');
+            const isRequested = item.deleteRequested === true;
+
+            tr.innerHTML = `
+                <td>${displayTime}</td>
+                <td class="txt-green" style="font-weight:bold;">₹${(item.amount || 0).toLocaleString('en-IN')}</td>
+                <td><span style="color:${isRequested ? '#ffaa00' : '#00ff66'};">${isRequested ? '// REQ DELETION' : '// SECURED'}</span></td>
+                <td>
+                    ${isRequested 
+                        ? '<span style="color:#ffaa00; font-size:11px;">Request Pending</span>' 
+                        : `<button class="btn-table-req" onclick="requestDeleteEntry('${key}')">Request Delete</button>`}
+                </td>
+            `;
+            tbody.appendChild(tr);
         });
 
         if (userTotalSavingsText) userTotalSavingsText.innerText = personalTotalAmount.toLocaleString('en-IN');
@@ -989,9 +1185,9 @@ function renderUserVIPAnalytics(records) {
     if (!chartCanvas) return;
 
     const sorted = [...records].sort((a, b) => {
-        const da = parseRecordDate(a.timestamp) || 0;
-        const db = parseRecordDate(b.timestamp) || 0;
-        return da - db;
+        const da = parseRecordDate(a.timestamp);
+        const db = parseRecordDate(b.timestamp);
+        return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
     });
 
     const labels = sorted.map(r => {
@@ -1035,9 +1231,11 @@ function renderUserVIPAnalytics(records) {
 
 function requestDeleteEntry(key) {
     if (confirm("Admin ko is entry ko delete karne ki request bhejein?")) {
-        database.ref('savingRecords/' + key).update({
-            deleteRequested: true
-        }).then(() => {
+        const updates = {};
+        updates[`savingRecords/${key}/deleteRequested`] = true;
+        updates[`users/${currentUser.username}/savingRecords/${key}/deleteRequested`] = true;
+
+        database.ref().update(updates).then(() => {
             alert("Delete request admin panel par send ho gayi hai!");
             renderUserLedger();
         });
@@ -1077,11 +1275,21 @@ function downloadUserFilteredData() {
 // ADMIN ACTIONS
 // ----------------------------------------------------
 function deleteRecordByAdmin(key) {
-    if (confirm("⚠️ Kya aap sach me is entry ko permanently DELETE karna chahte hain?")) {
-        database.ref('savingRecords/' + key).remove().then(() => {
-            alert("Entry successfully delete ho gayi!");
-        }).catch(err => {
-            alert("Delete error: " + err.message);
+    if (confirm("⚠️ Permanently delete this entry?")) {
+        database.ref('savingRecords/' + key).once('value').then(snapshot => {
+            const record = snapshot.val();
+            const updates = {};
+            updates['savingRecords/' + key] = null;
+            if (record && (record.userId || record.username)) {
+                const uNode = record.userId || record.username;
+                updates[`users/${uNode}/savingRecords/${key}`] = null;
+            }
+
+            database.ref().update(updates).then(() => {
+                alert("Entry successfully deleted across database!");
+            }).catch(err => {
+                alert("Delete error: " + err.message);
+            });
         });
     }
 }
@@ -1254,7 +1462,7 @@ function handleForgetPassword() {
 }
 
 // ----------------------------------------------------
-// DAILY ENTRY SUBMISSION (LINKED TO USER ID)
+// DAILY ENTRY SUBMISSION (DUAL ATOMIC WRITE AUTO SYNC)
 // ----------------------------------------------------
 function submitDailyEntry() {
     const amount = document.getElementById('saving-amount')?.value;
@@ -1278,7 +1486,7 @@ function submitDailyEntry() {
     }
     
     const entry = {
-        userId: currentUser.username, // Ensures strict isolation
+        userId: currentUser.username,
         username: currentUser.name,
         timestamp: new Date().toISOString(),
         amount: parseFloat(amount),
@@ -1287,7 +1495,13 @@ function submitDailyEntry() {
         deleteRequested: false
     };
 
-    database.ref('savingRecords').push(entry).then(() => {
+    const recordKey = database.ref('savingRecords').push().key;
+
+    const atomicUpdates = {};
+    atomicUpdates['savingRecords/' + recordKey] = entry;
+    atomicUpdates[`users/${currentUser.username}/savingRecords/${recordKey}`] = entry;
+
+    database.ref().update(atomicUpdates).then(() => {
         if (msg) msg.innerText = `🟢 SUCCESS: ₹${amount} saved & synced across cloud grid.`;
         const savInp = document.getElementById('saving-amount');
         if (savInp) savInp.value = "";
@@ -1297,6 +1511,8 @@ function submitDailyEntry() {
         const fileInp = document.getElementById('sig-file-input');
         if (fileInp) fileInp.value = "";
         setTimeout(() => { if (msg) msg.innerText = ""; }, 3000);
+    }).catch(err => {
+        alert("Sync Error: " + err.message);
     });
 }
 
