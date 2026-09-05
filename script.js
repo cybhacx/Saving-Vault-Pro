@@ -603,7 +603,7 @@ function clearSignature() {
 }
 
 // ----------------------------------------------------
-// ACCURATE MONTH INDEX MATCHING (0 = Jan, 8 = Sep, etc.)
+// ACCURATE MONTH INDEX MATCHING (0 = Jan, 8 = Sep, 9 = Oct, etc.)
 // ----------------------------------------------------
 function matchMonthIndex(monthValue, dateMonthIndex) {
     if (!monthValue || monthValue === 'ALL' || monthValue === 'All Months') return true;
@@ -615,7 +615,7 @@ function matchMonthIndex(monthValue, dateMonthIndex) {
     }
     const num = parseInt(valLower, 10);
     if (!isNaN(num)) {
-        return (num - 1) === dateMonthIndex;
+        return num === dateMonthIndex;
     }
     return false;
 }
@@ -728,6 +728,7 @@ function listenToUserProfiles() {
 
         snapshot.forEach((childSnapshot) => {
             const req = childSnapshot.val();
+            const rKey = childSnapshot.key;
             const dateObj = parseRecordDate(req.timestamp);
             const displayTime = formatIndianDateTime(dateObj);
 
