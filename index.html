@@ -5,10 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>⚡ CYBHACX MONEY ⚡</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Chart.js for VIP Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
     <div class="cyber-bg-grid"></div>
+
+    <!-- Global Theme Toggle Switch -->
+    <div class="theme-toggle-dock">
+        <button type="button" id="theme-toggle-btn" onclick="toggleAppTheme()" class="btn-theme-switch">
+            <span id="theme-icon">☀️</span> <span id="theme-text">DAY MODE</span>
+        </button>
+    </div>
 
     <div class="container">
         
@@ -24,7 +33,10 @@
                     <span class="plan-price">₹10 <small>/ Per Month</small></span>
                 </div>
                 <p class="plan-desc">Get instant access to attendance logging, saving vault & biometric verification matrix.</p>
-                <button type="button" onclick="showPaymentModal()" class="btn-cyber btn-glow-green btn-plan-pulse">⚡ GET ACCESS PASS (₹10) ⚡</button>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button type="button" onclick="showPaymentModal()" class="btn-cyber btn-glow-green btn-plan-pulse" style="flex:1;">⚡ GET PRO PASS (₹10) ⚡</button>
+                    <button type="button" onclick="showFreeRequestModal()" class="btn-cyber btn-glow-blue" style="flex:1;">FREE ACCESS PASS</button>
+                </div>
             </div>
             
             <div id="login-form-group">
@@ -65,6 +77,38 @@
                 <p class="forget-link" onclick="hideForgetPassword()">[ BACK TO LOGIN ]</p>
             </div>
 
+            <!-- Free vs Pro Comparison Matrix -->
+            <div class="plan-comparison-box">
+                <h4 class="txt-blue" style="text-align:center; margin: 15px 0 10px 0;">⚡ PLAN COMPARISON MATRIX ⚡</h4>
+                <div class="comparison-grid">
+                    <div class="comparison-col free-tier">
+                        <h5>FREE PASS</h5>
+                        <p class="comp-price">₹0</p>
+                        <ul>
+                            <li>✔️ Daily Saving Logging</li>
+                            <li>✔️ Draw Signature Pad</li>
+                            <li>❌ Photo Signature Upload</li>
+                            <li>❌ CSV Ledger Download</li>
+                            <li>❌ Visual Analytics & Graphs</li>
+                            <li>❌ Target Vault Goals</li>
+                        </ul>
+                    </div>
+                    <div class="comparison-col pro-tier">
+                        <span class="popular-tag">MOST POPULAR</span>
+                        <h5 class="txt-pink">PRO VIP PASS</h5>
+                        <p class="comp-price txt-green">₹10<small>/mo</small></p>
+                        <ul>
+                            <li>✔️ Daily Saving Logging</li>
+                            <li>✔️ Draw Signature Pad</li>
+                            <li>✔️ Transparent Photo Sign</li>
+                            <li>✔️ Uncapped CSV Downloads</li>
+                            <li>✔️ Interactive Trend Graphs</li>
+                            <li>✔️ Personal Goal Trackers</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
             <p id="auth-error" class="error-text"></p>
             <p id="auth-success" class="success-text"></p>
         </div>
@@ -73,10 +117,10 @@
         <div id="payment-modal" class="cyber-modal-overlay hidden">
             <div class="cyber-modal-card glow-border-pink">
                 <div class="modal-header-flex">
-                    <h3 class="txt-pink" style="margin: 0;">⚡ ACTIVATION PAYMENT</h3>
+                    <h3 class="txt-pink" style="margin: 0;">⚡ ACTIVATION PAYMENT (PRO VIP)</h3>
                     <button class="btn-modal-close" onclick="hidePaymentModal()">✕</button>
                 </div>
-                <p class="subtitle" style="text-align: left; margin: 8px 0 16px 0;">Enter your details to initiate ₹10 payment & reserve access pass.</p>
+                <p class="subtitle" style="text-align: left; margin: 8px 0 16px 0;">Enter details to initiate ₹10 payment & reserve PRO pass.</p>
 
                 <div id="payment-form-step">
                     <div class="input-group">
@@ -88,32 +132,30 @@
                         <input type="email" id="pay-email" placeholder="e.g. rahul@gmail.com">
                     </div>
                     <div class="input-group">
-                        <label>CONTACT NUMBER (FOR SMS/WHATSAPP)</label>
+                        <label>CONTACT NUMBER</label>
                         <input type="text" id="pay-phone" placeholder="e.g. 98765xxxxx">
                     </div>
                     <div class="input-group">
-                        <label>USERNAMES</label>
+                        <label>DESIRED SYSTEM ID (USERNAME)</label>
                         <input type="text" id="pay-username" placeholder="e.g. rahul_agent">
                     </div>
 
                     <div class="plan-price-summary">
-                        <span>PLAN/MONTH</span>
-                        <span class="txt-green" style="font-weight: bold; font-size: 16px;">₹10.00/m</span>
+                        <span>SELECTED PLAN</span>
+                        <span class="txt-green" style="font-weight: bold; font-size: 16px;">PRO VIP (₹10/mo)</span>
                     </div>
 
-                    <button type="button" onclick="initiateRazorpayPayment()" class="btn-cyber btn-glow-pink" style="margin-top: 15px;">PROCEED TO SECURE GATEWAY (₹10)</button>
+                    <button type="button" onclick="initiateRazorpayPayment()" class="btn-cyber btn-glow-pink" style="margin-top: 15px;">PROCEED TO PAYMENT GATEWAY (₹10)</button>
                     <p id="payment-err" class="error-text"></p>
                 </div>
 
-                <!-- Post-Payment Confirmation Box -->
                 <div id="payment-success-step" class="hidden">
                     <div class="cyber-success-beacon">
                         <h2 class="txt-green" style="margin: 0 0 10px 0;">✅ PAYMENT CONFIRMED</h2>
-                        <p class="txt-blue" style="font-size: 14px; font-weight: bold;">ORDER ID / PAYMENT REF: <span id="conf-pay-id" class="txt-pink">PAY_ID</span></p>
+                        <p class="txt-blue" style="font-size: 14px; font-weight: bold;">PAYMENT REF: <span id="conf-pay-id" class="txt-pink">PAY_ID</span></p>
                         <div class="confirmation-notice-box">
-                            <p style="margin: 0; font-size: 13px; line-height: 1.6; color: #ffffff;">
-                                🛡️ <b>Access Matrix Request Synced:</b> Your details and token have been logged in the admin queue.<br><br>
-                                ⏳ <b>Credential Delivery:</b> Our system administrator will verify and issue your User ID & Passcode within <b>1 to 5 minutes</b> via SMS/Email/WhatsApp.
+                            <p style="margin: 0; font-size: 13px; line-height: 1.6;">
+                                🛡️ <b>Access Request Queued:</b> System Admin verification is active. Your PRO credentials will be issued within <b>1 to 5 minutes</b>.
                             </p>
                         </div>
                         <button type="button" onclick="hidePaymentModal()" class="btn-cyber btn-glow-blue" style="margin-top: 20px;">RETURN TO LOGIN</button>
@@ -122,14 +164,63 @@
             </div>
         </div>
 
+        <!-- ================= FREE PLAN ONBOARDING MODAL ================= -->
+        <div id="free-request-modal" class="cyber-modal-overlay hidden">
+            <div class="cyber-modal-card glow-border-blue">
+                <div class="modal-header-flex">
+                    <h3 class="txt-blue" style="margin: 0;">⚡ FREE PLAN ENROLLMENT</h3>
+                    <button class="btn-modal-close" onclick="hideFreeRequestModal()">✕</button>
+                </div>
+                <p class="subtitle" style="text-align: left; margin: 8px 0 16px 0;">Apply for free system node credential access.</p>
+
+                <div id="free-form-step">
+                    <div class="input-group">
+                        <label>FULL NAME</label>
+                        <input type="text" id="free-name" placeholder="Full Name">
+                    </div>
+                    <div class="input-group">
+                        <label>EMAIL ADDRESS</label>
+                        <input type="email" id="free-email" placeholder="Email Address">
+                    </div>
+                    <div class="input-group">
+                        <label>CONTACT NUMBER</label>
+                        <input type="text" id="free-phone" placeholder="Phone Number">
+                    </div>
+                    <div class="input-group">
+                        <label>DESIRED SYSTEM ID (USERNAME)</label>
+                        <input type="text" id="free-username" placeholder="Username">
+                    </div>
+                    <div class="input-group">
+                        <label>DATE OF BIRTH</label>
+                        <input type="date" id="free-dob">
+                    </div>
+
+                    <button type="button" onclick="submitFreePlanRequest()" class="btn-cyber btn-glow-blue" style="margin-top: 15px;">SUBMIT FREE ACCESS REQUEST</button>
+                    <p id="free-err" class="error-text"></p>
+                </div>
+
+                <div id="free-success-step" class="hidden">
+                    <div class="cyber-success-beacon">
+                        <h2 class="txt-green" style="margin: 0 0 10px 0;">✅ REQUEST SUBMITTED</h2>
+                        <div class="confirmation-notice-box">
+                            <p style="margin: 0; font-size: 13px; line-height: 1.6;">
+                                🛡️ Your request for standard access has been routed to Admin. Once approved, you can login directly with your assigned passcode.
+                            </p>
+                        </div>
+                        <button type="button" onclick="hideFreeRequestModal()" class="btn-cyber btn-glow-blue" style="margin-top: 20px;">RETURN TO LOGIN</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- ================= 2. USER SCREEN ================= -->
         <div id="user-screen" class="screen hidden">
             <div class="card header">
-                <h2>👋 OPERATOR: <span id="user-display-name" class="txt-green">Agent</span></h2>
+                <h2>👋 OPERATOR: <span id="user-display-name" class="txt-green">Agent</span> <span id="user-plan-badge" class="plan-badge" style="vertical-align: middle; margin-left: 8px;">FREE</span></h2>
                 <button onclick="logout()" class="btn-disconnect">DISCONNECT</button>
             </div>
 
-            <!-- USER PRIVATE STATS (ONLY THIS USER'S DATA) -->
+            <!-- USER STATS -->
             <div class="stats-container">
                 <div class="card stat-box glow-border-green">
                     <h3>MY PERSONAL SAVING VAULT</h3>
@@ -174,7 +265,6 @@
                     </div>
                 </div>
 
-                <!-- Profile Edit Deck for User -->
                 <div id="edit-profile-deck" class="profile-edit-box hidden">
                     <h4 class="txt-pink" style="margin-top:0;">// UPDATE PERSONAL DATA MATRIX</h4>
                     <div class="admin-form-grid">
@@ -230,8 +320,9 @@
 
                     <div id="sig-upload-container" class="hidden">
                         <input type="file" id="sig-file-input" accept="image/*" onchange="handleSignatureFileUpload(event)">
+                        <p class="subtitle" style="text-align:left; margin:6px 0;">Clean filter will isolate strokes and wipe paper background automatically.</p>
                         <div id="sig-preview-wrapper" class="sig-preview-box hidden">
-                            <img id="sig-preview-img" src="" alt="Signature Preview">
+                            <img id="sig-preview-img" src="" alt="Processed Signature">
                         </div>
                     </div>
                 </div>
@@ -240,11 +331,19 @@
                 <p id="user-msg" class="success-text"></p>
             </div>
 
-            <!-- Optional VIP Panel for User (Unlocked by Admin) -->
-            <div id="user-unlocked-features-panel" class="card glow-border-pink hidden" style="margin-top: 20px;">
-                <h4 class="txt-pink" style="margin-top: 0;">🚀 VIP FEATURES UNLOCKED BY ADMIN</h4>
-                <p class="subtitle" style="text-align: left; margin-bottom: 12px;">You have special privilege access granted by the central command.</p>
-                <button onclick="downloadUserFilteredData()" class="btn-download">⬇️ DOWNLOAD MY PERSONAL CSV REPORT</button>
+            <!-- VIP Visual Analytics Deck (VIP Only) -->
+            <div id="user-vip-analytics-panel" class="card glow-border-pink hidden" style="margin-top: 20px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <div>
+                        <h3 class="txt-pink" style="margin: 0;">🚀 VIP ADVANCED SAVINGS ANALYTICS</h3>
+                        <p class="subtitle" style="text-align: left; margin: 4px 0 0 0;">Visual progress chart and personal goal tracker.</p>
+                    </div>
+                    <button onclick="downloadUserFilteredData()" class="btn-download">⬇️ EXPORT PERSONAL CSV</button>
+                </div>
+
+                <div style="margin-top: 20px; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px;">
+                    <canvas id="user-vip-chart" height="110"></canvas>
+                </div>
             </div>
 
             <div class="card glow-border-blue" style="margin-top: 20px;">
@@ -350,7 +449,7 @@
                     <div class="input-group">
                         <label>FEATURE ACCESS LEVEL</label>
                         <select id="signup-features-unlocked">
-                            <option value="standard">Standard Features</option>
+                            <option value="standard">Standard Free Tier</option>
                             <option value="vip">🚀 VIP / Pro Features Unlocked</option>
                         </select>
                     </div>
@@ -391,10 +490,30 @@
                 </div>
             </div>
 
-            <!-- Access Payment Requests Queue in Admin Panel -->
+            <!-- Free Requests Approval Queue -->
+            <div class="card glow-border-blue" style="margin-top: 25px;">
+                <h3 class="txt-blue" style="margin-top:0;">📋 FREE PASS ONBOARDING REQUESTS</h3>
+                <p class="subtitle" style="text-align:left; margin-bottom: 12px;">Users requesting zero-cost standard access.</p>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>TIMESTAMP</th>
+                                <th>PROPOSED ID</th>
+                                <th>NAME & CONTACT</th>
+                                <th>DOB</th>
+                                <th>ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-free-requests-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Paid Access Requests Queue -->
             <div class="card glow-border-green" style="margin-top: 25px;">
                 <h3 class="txt-green" style="margin-top:0;">💳 ₹10 ACCESS PASS PAYMENT QUEUE</h3>
-                <p class="subtitle" style="text-align:left; margin-bottom: 12px;">Users who completed payment for login credentials.</p>
+                <p class="subtitle" style="text-align:left; margin-bottom: 12px;">Users who completed ₹10 payment for PRO credentials.</p>
                 <div class="table-container">
                     <table>
                         <thead>
@@ -412,7 +531,7 @@
                 </div>
             </div>
 
-            <!-- Filter Section -->
+            <!-- Matrix Filter Section -->
             <div class="card glow-border-blue" style="margin-top: 25px;">
                 <div class="filter-header-flex">
                     <h3 class="txt-blue" style="margin:0;">🔍 MATRIX FILTER CONTROL DECK</h3>
@@ -485,7 +604,7 @@
 
     </div>
 
-    <!-- Razorpay Standard Checkout SDK -->
+    <!-- Razorpay Checkout SDK -->
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>

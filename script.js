@@ -23,18 +23,56 @@ let uploadedProfileBase64 = null;
 let adminUploadedProfileBase64 = null;
 let currentSigMode = 'draw';
 let uploadedSignatureBase64 = null;
+let userAnalyticsChart = null;
 const TARGET_GOAL = 100000;
 
 // Default Avatar SVG
 const DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2300f0ff' viewBox='0 0 16 16'><path d='M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z'/></svg>";
 
-// Signature Canvas Setup
+// Canvas Setup
 const canvas = document.getElementById('sig-canvas');
 const ctx = canvas?.getContext('2d');
 let drawing = false;
 
 // ----------------------------------------------------
-// PAYMENT MODAL CONTROLLER & RAZORPAY CHECKOUT
+// THEME SWITCHER ENGINE (DAY/NIGHT)
+// ----------------------------------------------------
+function initThemeEngine() {
+    const savedTheme = localStorage.getItem('cybhacx_app_theme') || 'night';
+    if (savedTheme === 'day') {
+        document.body.classList.add('day-mode');
+        updateThemeButtonUI('day');
+    } else {
+        document.body.classList.remove('day-mode');
+        updateThemeButtonUI('night');
+    }
+}
+
+function toggleAppTheme() {
+    const isDay = document.body.classList.toggle('day-mode');
+    const chosenTheme = isDay ? 'day' : 'night';
+    localStorage.setItem('cybhacx_app_theme', chosenTheme);
+    updateThemeButtonUI(chosenTheme);
+    if (userAnalyticsChart) {
+        renderUserVIPAnalytics(currentUserRecordsCache);
+    }
+}
+
+function updateThemeButtonUI(theme) {
+    const icon = document.getElementById('theme-icon');
+    const text = document.getElementById('theme-text');
+    if (!icon || !text) return;
+    if (theme === 'day') {
+        icon.innerText = '🌙';
+        text.innerText = 'NIGHT MODE';
+    } else {
+        icon.innerText = '☀️';
+        text.innerText = 'DAY MODE';
+    }
+}
+
+// ----------------------------------------------------
+// MODAL CONTROLLERS & PLAN ENROLLMENTS
 // ----------------------------------------------------
 function showPaymentModal() {
     document.getElementById('payment-modal')?.classList.remove('hidden');
@@ -46,6 +84,50 @@ function showPaymentModal() {
 
 function hidePaymentModal() {
     document.getElementById('payment-modal')?.classList.add('hidden');
+}
+
+function showFreeRequestModal() {
+    document.getElementById('free-request-modal')?.classList.remove('hidden');
+    document.getElementById('free-form-step')?.classList.remove('hidden');
+    document.getElementById('free-success-step')?.classList.add('hidden');
+    const err = document.getElementById('free-err');
+    if (err) err.innerText = "";
+}
+
+function hideFreeRequestModal() {
+    document.getElementById('free-request-modal')?.classList.add('hidden');
+}
+
+function submitFreePlanRequest() {
+    const name = document.getElementById('free-name')?.value.trim();
+    const email = document.getElementById('free-email')?.value.trim();
+    const phone = document.getElementById('free-phone')?.value.trim();
+    const username = document.getElementById('free-username')?.value.trim().toLowerCase();
+    const dob = document.getElementById('free-dob')?.value;
+    const err = document.getElementById('free-err');
+
+    if (!name || !email || !phone || !username) {
+        if (err) err.innerText = "❌ Please complete all mandatory fields!";
+        return;
+    }
+
+    const payload = {
+        name,
+        email,
+        phone,
+        username,
+        dob: dob || "N/A",
+        planType: "free",
+        status: "PENDING_APPROVAL",
+        timestamp: new Date().toISOString()
+    };
+
+    database.ref('freePlanRequests').push(payload).then(() => {
+        document.getElementById('free-form-step')?.classList.add('hidden');
+        document.getElementById('free-success-step')?.classList.remove('hidden');
+    }).catch(e => {
+        if (err) err.innerText = "Error: " + e.message;
+    });
 }
 
 function initiateRazorpayPayment() {
@@ -66,7 +148,7 @@ function initiateRazorpayPayment() {
         "amount": "1000",
         "currency": "INR",
         "name": "CYBHACX MONEY",
-        "description": "Node Activation Pass (Monthly Plan)",
+        "description": "PRO VIP Node Access Pass",
         "image": "https://img.icons8.com/neon/96/00f0ff/cyberpunk.png",
         "handler": function (response) {
             handleSuccessfulPayment({
@@ -76,6 +158,7 @@ function initiateRazorpayPayment() {
                 phone: phone,
                 username: username,
                 amount: 10,
+                planType: "vip",
                 timestamp: new Date().toISOString()
             });
         },
@@ -96,7 +179,7 @@ function initiateRazorpayPayment() {
         });
         rzp1.open();
     } catch (e) {
-        alert("Razorpay SDK not ready or Key missing: " + e.message);
+        alert("Razorpay SDK Error: " + e.message);
     }
 }
 
@@ -112,7 +195,7 @@ function handleSuccessfulPayment(paymentRecord) {
 }
 
 // ----------------------------------------------------
-// AUTO-INJECT NEON SMOKE & FLOATING PARTICLES ENGINE
+// FUTURISTIC FX & PARTICLES
 // ----------------------------------------------------
 function setupFuturisticEffects() {
     if (!document.getElementById('cyber-particles-canvas')) {
@@ -149,7 +232,7 @@ function initCyberParticles() {
 
     const colors = ['#00f0ff', '#ff007f', '#00ff66', '#b026ff'];
     const particles = [];
-    const particleCount = Math.min(85, Math.floor((width * height) / 12000));
+    const particleCount = Math.min(75, Math.floor((width * height) / 13000));
 
     class Particle {
         constructor() {
@@ -268,8 +351,7 @@ function parseRecordDate(timestampStr) {
             } else if (p2 > 12) {
                 month = p1 - 1; day = p2;
             } else {
-                if (p1 === 8 || p1 === 7) { month = p1 - 1; day = p2; }
-                else { day = p1; month = p2 - 1; }
+                day = p1; month = p2 - 1;
             }
         }
 
@@ -289,7 +371,7 @@ function parseRecordDate(timestampStr) {
 }
 
 // ----------------------------------------------------
-// USER PROFILE ENGINE & PRIVATE STATS
+// USER PROFILE & PRIVATE STATS
 // ----------------------------------------------------
 function renderUserProfileData() {
     if (!currentUser) return;
@@ -303,16 +385,21 @@ function renderUserProfileData() {
     document.getElementById('profile-card-role').innerText = currentUser.role?.toUpperCase() || 'STANDARD AGENT';
 
     const avatarImg = document.getElementById('user-profile-img');
-    if (avatarImg) {
-        avatarImg.src = currentUser.profileImg || DEFAULT_AVATAR;
+    if (avatarImg) avatarImg.src = currentUser.profileImg || DEFAULT_AVATAR;
+
+    const planBadge = document.getElementById('user-plan-badge');
+    const isVIP = currentUser.unlockedFeatures === 'vip';
+    if (planBadge) {
+        planBadge.innerText = isVIP ? '🚀 PRO VIP' : 'FREE PASS';
+        planBadge.style.background = isVIP ? 'var(--neon-pink)' : 'var(--neon-blue)';
     }
 
-    const vipPanel = document.getElementById('user-unlocked-features-panel');
-    if (vipPanel) {
-        if (currentUser.unlockedFeatures === 'vip') {
-            vipPanel.classList.remove('hidden');
+    const vipAnalyticsPanel = document.getElementById('user-vip-analytics-panel');
+    if (vipAnalyticsPanel) {
+        if (isVIP) {
+            vipAnalyticsPanel.classList.remove('hidden');
         } else {
-            vipPanel.classList.add('hidden');
+            vipAnalyticsPanel.classList.add('hidden');
         }
     }
 }
@@ -373,7 +460,7 @@ function saveUserProfileChanges() {
         return;
     }
 
-    const updates = { name: name, email: email, phone: phone, dob: dob };
+    const updates = { name, email, phone, dob };
     if (uploadedProfileBase64) updates.profileImg = uploadedProfileBase64;
 
     database.ref('users/' + currentUser.username).update(updates).then(() => {
@@ -391,7 +478,7 @@ function saveUserProfileChanges() {
 }
 
 // ----------------------------------------------------
-// SIGNATURE ENGINE
+// SIGNATURE ENGINE (HIGH PRECISION THRESHOLDING)
 // ----------------------------------------------------
 function switchSignatureMode(mode) {
     currentSigMode = mode;
@@ -416,6 +503,7 @@ function switchSignatureMode(mode) {
 function handleSignatureFileUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
+
     const reader = new FileReader();
     reader.onload = function(event) {
         const img = new Image();
@@ -425,19 +513,31 @@ function handleSignatureFileUpload(e) {
             tempCanvas.width = img.width;
             tempCanvas.height = img.height;
             tempCtx.drawImage(img, 0, 0);
+
             const imgData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
             const data = imgData.data;
 
+            // Background Removal & Crisp High-Contrast Filter
             for (let i = 0; i < data.length; i += 4) {
-                const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                if (brightness > 180) {
-                    data[i + 3] = 0;
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                const brightness = (r * 0.299 + g * 0.587 + b * 0.114);
+
+                // If background paper / line / light reflection
+                if (brightness > 140) {
+                    data[i + 3] = 0; // Alpha 0 = completely transparent
                 } else {
-                    data[i] = 0; data[i + 1] = 240; data[i + 2] = 255; data[i + 3] = 255;
+                    // Pen ink isolation: Vibrant high-tech signature
+                    data[i] = 0;       // R
+                    data[i + 1] = 255; // G (Crisp Neon Green)
+                    data[i + 2] = 102; // B
+                    data[i + 3] = 255; // Full solid opacity
                 }
             }
+
             tempCtx.putImageData(imgData, 0, 0);
-            uploadedSignatureBase64 = tempCanvas.toDataURL();
+            uploadedSignatureBase64 = tempCanvas.toDataURL('image/png');
 
             const previewImg = document.getElementById('sig-preview-img');
             const previewWrapper = document.getElementById('sig-preview-wrapper');
@@ -482,7 +582,7 @@ function clearSignature() {
 }
 
 // ----------------------------------------------------
-// REALTIME LISTENERS & QUEUE
+// REALTIME LISTENERS
 // ----------------------------------------------------
 function listenToLiveDatabase() {
     database.ref('savingRecords').on('value', (snapshot) => {
@@ -536,6 +636,7 @@ function listenToUserProfiles() {
                         <button class="btn-table-edit" style="border-color:var(--neon-pink); color:var(--neon-pink);" onclick="toggleUserFeature('${uId}', '${user.unlockedFeatures === 'vip' ? 'standard' : 'vip'}')">
                             ${user.unlockedFeatures === 'vip' ? 'REVOKE VIP' : 'GRANT VIP'}
                         </button>
+                        <button class="btn-table-del" onclick="deleteUserByAdmin('${uId}')">DELETE USER</button>
                     </div>
                 </td>
             `;
@@ -543,6 +644,37 @@ function listenToUserProfiles() {
         });
     });
 
+    // Free Plan Requests Listener
+    database.ref('freePlanRequests').on('value', (snapshot) => {
+        const tbody = document.getElementById('admin-free-requests-body');
+        if (!tbody) return;
+        tbody.innerHTML = "";
+
+        snapshot.forEach((childSnapshot) => {
+            const req = childSnapshot.val();
+            const rKey = childSnapshot.key;
+            const dateObj = parseRecordDate(req.timestamp);
+            const displayTime = formatIndianDateTime(dateObj);
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${displayTime}</td>
+                <td><span class="txt-blue" style="font-weight:bold;">${req.username || 'N/A'}</span></td>
+                <td style="font-size:11px; line-height:1.4;">
+                    👤 ${req.name}<br>
+                    📧 ${req.email}<br>
+                    📱 ${req.phone}
+                </td>
+                <td>${req.dob || 'N/A'}</td>
+                <td>
+                    <button class="btn-table-edit" onclick="prefillFreeUser('${req.username}', '${req.name}', '${req.email}', '${req.phone}', '${req.dob}', '${rKey}')">APPROVE & SETUP</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    });
+
+    // Paid Requests Listener
     database.ref('paymentRequests').on('value', (snapshot) => {
         const tbody = document.getElementById('admin-payments-body');
         if (!tbody) return;
@@ -571,6 +703,27 @@ function listenToUserProfiles() {
             tbody.appendChild(tr);
         });
     });
+}
+
+function prefillFreeUser(username, name, email, phone, dob, reqKey) {
+    prefillUserProvisioning(username, name, email, phone);
+    const dobInp = document.getElementById('signup-dob');
+    const featSel = document.getElementById('signup-features-unlocked');
+    if (dobInp && dob !== 'N/A') dobInp.value = dob;
+    if (featSel) featSel.value = 'standard';
+
+    // Delete request from queue once handled
+    database.ref('freePlanRequests/' + reqKey).remove();
+}
+
+function deleteUserByAdmin(username) {
+    if (confirm(`⚠️ DANGER: Kya aap sach me User [${username}] ko permanently DELETE karna chahte hain?`)) {
+        database.ref('users/' + username).remove().then(() => {
+            alert(`User [${username}] successfully deleted from Firebase.`);
+        }).catch(err => {
+            alert("Delete Error: " + err.message);
+        });
+    }
 }
 
 function toggleUserLock(username, newStatus) {
@@ -614,7 +767,8 @@ function populateFilterDropdowns(records) {
     const yearsSet = new Set();
 
     records.forEach(r => {
-        if (r.username) usersSet.add(r.username);
+        if (r.userId) usersSet.add(r.userId);
+        else if (r.username) usersSet.add(r.username);
         const parsed = parseRecordDate(r.timestamp);
         if (parsed) yearsSet.add(parsed.getFullYear());
     });
@@ -645,7 +799,8 @@ function applyMatrixFilters() {
     const searchQuery = document.getElementById('admin-search-input')?.value.toLowerCase().trim() || "";
 
     currentFilteredRecords = allRecordsCache.filter(record => {
-        if (selectedUser !== 'ALL' && record.username !== selectedUser) return false;
+        const recordUser = record.userId || record.username;
+        if (selectedUser !== 'ALL' && recordUser !== selectedUser) return false;
 
         const dateObj = parseRecordDate(record.timestamp);
         if (dateObj) {
@@ -663,7 +818,7 @@ function applyMatrixFilters() {
 
         if (searchQuery) {
             const formattedTime = formatIndianDateTime(dateObj).toLowerCase();
-            const matchesUser = record.username?.toLowerCase().includes(searchQuery);
+            const matchesUser = recordUser?.toLowerCase().includes(searchQuery);
             const matchesAmt = String(record.amount).includes(searchQuery);
             const matchesTime = record.timestamp?.toLowerCase().includes(searchQuery) || formattedTime.includes(searchQuery);
             const matchesStatus = record.status?.toLowerCase().includes(searchQuery);
@@ -687,7 +842,7 @@ function resetFilters() {
 }
 
 // ----------------------------------------------------
-// AUTHENTICATION & SESSIONS
+// AUTHENTICATION & LOGIN
 // ----------------------------------------------------
 function showForgetPassword() {
     document.getElementById('login-form-group')?.classList.add('hidden');
@@ -717,7 +872,6 @@ function handleLogin() {
         if (snapshot.exists()) {
             const userData = snapshot.val();
             
-            // Check Lock Condition
             if (userData.isLocked === true || userData.isLocked === "true") {
                 if (err) err.innerText = "🔒 ACCESS LOCKED: Your Node has been restricted by Admin!";
                 return;
@@ -743,7 +897,6 @@ function handleLogin() {
         }
     }).catch(e => {
         if (err) err.innerText = "🚨 FAULT: Database connection error!";
-        console.error(e);
     });
 }
 
@@ -762,7 +915,7 @@ function launchAppForUser() {
 }
 
 // ----------------------------------------------------
-// USER SPECIFIC ACTIONS & PRIVATE LEDGER
+// STRICT ISOLATED USER LEDGER & VIP ANALYTICS
 // ----------------------------------------------------
 function listenToUserRecords() {
     database.ref('savingRecords').on('value', () => {
@@ -788,8 +941,10 @@ function renderUserLedger() {
             const item = childSnapshot.val();
             const key = childSnapshot.key;
 
-            // Strict Filter: Only this user's records
-            if (item.username === currentUser.name) {
+            // Strict Isolation Check: Match system ID (username)
+            const matchesUser = item.userId === currentUser.username || (!item.userId && item.username === currentUser.name);
+
+            if (matchesUser) {
                 personalTotalAmount += (parseFloat(item.amount) || 0);
                 personalTotalCount++;
                 currentUserRecordsCache.push(item);
@@ -822,6 +977,59 @@ function renderUserLedger() {
 
         if (userTotalSavingsText) userTotalSavingsText.innerText = personalTotalAmount.toLocaleString('en-IN');
         if (userTotalEntriesText) userTotalEntriesText.innerText = personalTotalCount;
+
+        if (currentUser.unlockedFeatures === 'vip') {
+            renderUserVIPAnalytics(currentUserRecordsCache);
+        }
+    });
+}
+
+function renderUserVIPAnalytics(records) {
+    const chartCanvas = document.getElementById('user-vip-chart');
+    if (!chartCanvas) return;
+
+    const sorted = [...records].sort((a, b) => {
+        const da = parseRecordDate(a.timestamp) || 0;
+        const db = parseRecordDate(b.timestamp) || 0;
+        return da - db;
+    });
+
+    const labels = sorted.map(r => {
+        const d = parseRecordDate(r.timestamp);
+        return d ? `${d.getDate()}/${d.getMonth()+1}` : 'N/A';
+    });
+    const dataPoints = sorted.map(r => parseFloat(r.amount) || 0);
+
+    if (userAnalyticsChart) userAnalyticsChart.destroy();
+
+    const isDay = document.body.classList.contains('day-mode');
+    const primaryColor = isDay ? '#d90466' : '#00f0ff';
+    const gridColor = isDay ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)';
+
+    userAnalyticsChart = new Chart(chartCanvas, {
+        type: 'line',
+        data: {
+            labels: labels.length ? labels : ['No Data'],
+            datasets: [{
+                label: 'Savings Deposit Trend (₹)',
+                data: dataPoints.length ? dataPoints : [0],
+                borderColor: primaryColor,
+                backgroundColor: isDay ? 'rgba(217, 4, 102, 0.1)' : 'rgba(0, 240, 255, 0.15)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.35
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: { grid: { color: gridColor }, ticks: { color: isDay ? '#374151' : '#a1a1aa' } },
+                y: { grid: { color: gridColor }, ticks: { color: isDay ? '#374151' : '#a1a1aa' } }
+            },
+            plugins: {
+                legend: { labels: { color: isDay ? '#111827' : '#ffffff' } }
+            }
+        }
     });
 }
 
@@ -859,17 +1067,17 @@ function downloadUserFilteredData() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `My_Savings_${currentUser.username}_${new Date().toISOString().slice(0,10)}.csv`);
+    link.setAttribute("download", `VIP_Savings_${currentUser.username}_${new Date().toISOString().slice(0,10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 }
 
 // ----------------------------------------------------
-// ADMIN CONTROLS
+// ADMIN ACTIONS
 // ----------------------------------------------------
 function deleteRecordByAdmin(key) {
-    if (confirm("⚠️ Kya aap sach me is entry ko database se permanently DELETE karna chahte hain?")) {
+    if (confirm("⚠️ Kya aap sach me is entry ko permanently DELETE karna chahte hain?")) {
         database.ref('savingRecords/' + key).remove().then(() => {
             alert("Entry successfully delete ho gayi!");
         }).catch(err => {
@@ -901,12 +1109,12 @@ function handleAdminCreateUser() {
     }
 
     const payload = {
-        name: name,
-        email: email,
-        phone: phone,
-        dob: dob,
-        role: role,
-        isLocked: isLocked,
+        name,
+        email,
+        phone,
+        dob,
+        role,
+        isLocked,
         unlockedFeatures: features,
         securityAnswer: security
     };
@@ -989,12 +1197,13 @@ function downloadFilteredData() {
     }
 
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Operator,Timestamp,Amount,Status,Delete_Requested\r\n";
+    csvContent += "Operator_ID,Operator_Name,Timestamp,Amount,Status,Delete_Requested\r\n";
 
     currentFilteredRecords.forEach(r => {
         const dateObj = parseRecordDate(r.timestamp);
         const displayTime = formatIndianDateTime(dateObj);
         const row = [
+            `"${r.userId || ''}"`,
             `"${r.username || ''}"`,
             `"${displayTime}"`,
             r.amount || 0,
@@ -1045,7 +1254,7 @@ function handleForgetPassword() {
 }
 
 // ----------------------------------------------------
-// DAILY ENTRY SUBMISSION
+// DAILY ENTRY SUBMISSION (LINKED TO USER ID)
 // ----------------------------------------------------
 function submitDailyEntry() {
     const amount = document.getElementById('saving-amount')?.value;
@@ -1069,6 +1278,7 @@ function submitDailyEntry() {
     }
     
     const entry = {
+        userId: currentUser.username, // Ensures strict isolation
         username: currentUser.name,
         timestamp: new Date().toISOString(),
         amount: parseFloat(amount),
@@ -1091,7 +1301,7 @@ function submitDailyEntry() {
 }
 
 // ----------------------------------------------------
-// ADMIN DASHBOARD
+// ADMIN DASHBOARD RENDERING
 // ----------------------------------------------------
 function renderAdminDashboard(records) {
     const tbody = document.getElementById('records-body');
@@ -1112,7 +1322,7 @@ function renderAdminDashboard(records) {
         const displayTime = formatIndianDateTime(dateObj);
 
         row.innerHTML = `
-            <td><b>${record.username || 'N/A'}</b></td>
+            <td><b>${record.username || record.userId || 'N/A'}</b></td>
             <td>${displayTime}</td>
             <td class="txt-blue" style="font-weight:bold;">₹${(record.amount || 0).toLocaleString('en-IN')}</td>
             <td><span style="color:${isDeleteReq ? '#ffaa00' : '#00ff66'};">// ${isDeleteReq ? 'REQ DELETION' : (record.status || 'SECURED')}</span></td>
@@ -1152,9 +1362,10 @@ function logout() {
 }
 
 // ----------------------------------------------------
-// INITIAL LOAD
+// INITIAL LOAD & AUTO-SESSION
 // ----------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
+    initThemeEngine();
     setupFuturisticEffects();
 
     const savedUserSession = localStorage.getItem('cybhacx_auth_user');
