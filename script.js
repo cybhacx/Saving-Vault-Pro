@@ -957,17 +957,19 @@ function hideForgetPassword() {
 }
 
 function handleLogin() {
-    const userInp = document.getElementById('login-username')?.value.trim().toLowerCase();
+    const rawUserInp = document.getElementById('login-username')?.value.trim();
     const passInp = document.getElementById('login-password')?.value;
     const err = document.getElementById('auth-error');
 
-    if (!userInp || !passInp) {
+    if (!rawUserInp || !passInp) {
         if (err) err.innerText = "🚨 ACCESS DENIED: Empty Matrix Loops!";
         return;
     }
 
-    // Admin direct check pehle run karein (database overwrite bypass)
-    if (userInp === 'cybhacx' && passInp === 'cybhacx@#Ravi') {
+    const lowerUserInp = rawUserInp.toLowerCase();
+
+    // 1. Direct Admin Check
+    if (lowerUserInp === 'cybhacx' && passInp === 'cybhacx@#Ravi') {
         currentUser = {
             password: "cybhacx@#Ravi",
             role: "admin",
@@ -980,19 +982,31 @@ function handleLogin() {
         return;
     }
 
-    // Normal User check
-    database.ref('users/' + userInp).once('value').then((snapshot) => {
+    // 2. Flexible User Check (Case-insensitive match across all keys)
+    database.ref('users').once('value').then((snapshot) => {
+        let matchedUser = null;
+        let matchedKey = null;
+
         if (snapshot.exists()) {
-            const userData = snapshot.val();
-            
-            if (userData.isLocked === true || userData.isLocked === "true") {
+            snapshot.forEach((child) => {
+                const key = child.key;
+                if (key.toLowerCase() === lowerUserInp) {
+                    matchedUser = child.val();
+                    matchedKey = key;
+                }
+            });
+        }
+
+        if (matchedUser) {
+            if (matchedUser.isLocked === true || matchedUser.isLocked === "true") {
                 if (err) err.innerText = "🔒 ACCESS LOCKED: Your Node has been restricted by Admin!";
                 return;
             }
 
-            if (userData.password === passInp) {
-                currentUser = userData;
-                currentUser.username = userInp;
+            // String comparison taaki numeric password bhi sahi match ho
+            if (String(matchedUser.password) === String(passInp)) {
+                currentUser = matchedUser;
+                currentUser.username = matchedKey;
                 if (err) err.innerText = "";
                 localStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
                 launchAppForUser();
@@ -1003,7 +1017,7 @@ function handleLogin() {
             if (err) err.innerText = "🚨 ACCESS DENIED: NODE IDENTITY NOT DEPLOYED!";
         }
     }).catch(e => {
-        if (err) err.innerText = "🚨 FAULT: Database connection error!";
+        if (err) err.innerText = "🚨 FAULT: Database connection error: " + e.message;
     });
 }
 
@@ -1301,7 +1315,7 @@ function deleteRecordByAdmin(key) {
 }
 
 function handleAdminCreateUser() {
-    const username = document.getElementById('signup-username')?.value.trim().toLowerCase();
+    const username = document.getElementById('signup-username')?.value.trim();
     const name = document.getElementById('signup-name')?.value.trim();
     const email = document.getElementById('signup-email')?.value.trim();
     const phone = document.getElementById('signup-phone')?.value.trim();
@@ -1440,20 +1454,32 @@ function downloadFilteredData() {
 // FORGET PASSWORD
 // ----------------------------------------------------
 function handleForgetPassword() {
-    const username = document.getElementById('forget-username')?.value.trim().toLowerCase();
+    const rawUser = document.getElementById('forget-username')?.value.trim();
     const security = document.getElementById('forget-security')?.value.trim().toLowerCase();
     const newPass = document.getElementById('forget-new-password')?.value;
     const err = document.getElementById('auth-error');
     const succ = document.getElementById('auth-success');
 
-    if (!username || !security || !newPass) {
+    if (!rawUser || !security || !newPass) {
         if (err) err.innerText = "🚨 FAULT: Missing verification matrix fields.";
         return;
     }
 
-    database.ref('users/' + username).once('value').then((snapshot) => {
-        if (snapshot.exists() && snapshot.val().securityAnswer === security) {
-            database.ref('users/' + username + '/password').set(newPass).then(() => {
+    database.ref('users').once('value').then((snapshot) => {
+        let targetKey = null;
+        let userData = null;
+
+        if (snapshot.exists()) {
+            snapshot.forEach((child) => {
+                if (child.key.toLowerCase() === rawUser.toLowerCase()) {
+                    targetKey = child.key;
+                    userData = child.val();
+                }
+            });
+        }
+
+        if (userData && userData.securityAnswer?.toLowerCase() === security) {
+            database.ref('users/' + targetKey + '/password').set(newPass).then(() => {
                 if (err) err.innerText = "";
                 if (succ) succ.innerText = "🟢 SYSTEM INJECT: PASSCODE MODIFIED!";
                 setTimeout(() => { 
@@ -1595,10 +1621,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             currentUser = JSON.parse(savedUserSession);
             
-            // 1. Instant Screen Render (Firebase response ke wait ke bina)
+            // 1. Instant Screen Render
             launchAppForUser();
 
-            // 2. Silent Background Verification (Only for standard users to avoid role overwrite)
+            // 2. Background Sync
             if (currentUser && currentUser.role !== 'admin') {
                 database.ref('users/' + currentUser.username).once('value').then(snapshot => {
                     if (snapshot.exists()) {
