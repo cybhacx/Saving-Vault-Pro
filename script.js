@@ -53,7 +53,6 @@ function toggleAppTheme() {
     updateThemeButtonUI(chosenTheme);
 
     const primaryColor = isDay ? '#0284c7' : '#00ff66';
-    const gridColor = isDay ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)';
 
     if (userAnalyticsChart) {
         userAnalyticsChart.data.datasets[0].borderColor = isDay ? '#d90466' : '#00f0ff';
@@ -274,14 +273,13 @@ function initCyberParticles() {
         particles.push(new Particle());
     }
 
-    let animationFrameId;
     function animate() {
         pCtx.clearRect(0, 0, width, height);
         for (let i = 0; i < particles.length; i++) {
             particles[i].update();
             particles[i].draw();
         }
-        animationFrameId = requestAnimationFrame(animate);
+        requestAnimationFrame(animate);
     }
     animate();
 }
@@ -380,13 +378,21 @@ function parseRecordDate(timestampStr) {
 function renderUserProfileData() {
     if (!currentUser) return;
 
-    document.getElementById('user-display-name').innerText = currentUser.name || 'Agent';
-    document.getElementById('profile-card-name').innerText = currentUser.name || 'Agent';
-    document.getElementById('profile-card-id').innerText = currentUser.username || 'NODE';
-    document.getElementById('profile-card-email').innerText = currentUser.email || 'Not Set';
-    document.getElementById('profile-card-phone').innerText = currentUser.phone || 'Not Set';
-    document.getElementById('profile-card-dob').innerText = currentUser.dob || 'Not Set';
-    document.getElementById('profile-card-role').innerText = currentUser.role?.toUpperCase() || 'STANDARD AGENT';
+    const userDispName = document.getElementById('user-display-name');
+    const profCardName = document.getElementById('profile-card-name');
+    const profCardId = document.getElementById('profile-card-id');
+    const profCardEmail = document.getElementById('profile-card-email');
+    const profCardPhone = document.getElementById('profile-card-phone');
+    const profCardDob = document.getElementById('profile-card-dob');
+    const profCardRole = document.getElementById('profile-card-role');
+
+    if (userDispName) userDispName.innerText = currentUser.name || currentUser.username || 'Agent';
+    if (profCardName) profCardName.innerText = currentUser.name || 'Agent';
+    if (profCardId) profCardId.innerText = currentUser.username || 'NODE';
+    if (profCardEmail) profCardEmail.innerText = currentUser.email || 'Not Set';
+    if (profCardPhone) profCardPhone.innerText = currentUser.phone || 'Not Set';
+    if (profCardDob) profCardDob.innerText = currentUser.dob || 'Not Set';
+    if (profCardRole) profCardRole.innerText = (currentUser.role || 'user').toUpperCase();
 
     const avatarImg = document.getElementById('user-profile-img');
     if (avatarImg) avatarImg.src = currentUser.profileImg || DEFAULT_AVATAR;
@@ -471,7 +477,7 @@ function saveUserProfileChanges() {
 
     database.ref('users/' + currentUser.username).update(updates).then(() => {
         currentUser = { ...currentUser, ...updates };
-        localStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
+        sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
         renderUserProfileData();
         if (msg) msg.innerText = "🟢 PROFILE MATRIX UPDATED SUCCESSFULLY!";
         setTimeout(() => {
@@ -940,7 +946,7 @@ function resetFilters() {
 }
 
 // ----------------------------------------------------
-// AUTHENTICATION
+// AUTHENTICATION & GRANULAR ERROR HANDLING
 // ----------------------------------------------------
 function showForgetPassword() {
     document.getElementById('login-form-group')?.classList.add('hidden');
@@ -960,29 +966,64 @@ function handleLogin() {
     const rawUserInp = document.getElementById('login-username')?.value.trim();
     const passInp = document.getElementById('login-password')?.value;
     const err = document.getElementById('auth-error');
+    const usernameInput = document.getElementById('login-username');
+    const passwordInput = document.getElementById('login-password');
 
-    if (!rawUserInp || !passInp) {
-        if (err) err.innerText = "🚨 ACCESS DENIED: Empty Matrix Loops!";
+    if (usernameInput) usernameInput.style.borderColor = "";
+    if (passwordInput) passwordInput.style.borderColor = "";
+    if (err) err.innerText = "";
+
+    if (!rawUserInp && !passInp) {
+        if (err) err.innerText = "🚨 ACCESS DENIED: Please enter Username and Passcode!";
+        if (usernameInput) usernameInput.style.borderColor = "#ff3366";
+        if (passwordInput) passwordInput.style.borderColor = "#ff3366";
+        return;
+    }
+
+    if (!rawUserInp) {
+        if (err) err.innerText = "🚨 ACCESS DENIED: System ID / Username cannot be empty!";
+        if (usernameInput) {
+            usernameInput.style.borderColor = "#ff3366";
+            usernameInput.focus();
+        }
+        return;
+    }
+
+    if (!passInp) {
+        if (err) err.innerText = "🚨 ACCESS DENIED: Passcode field is blank!";
+        if (passwordInput) {
+            passwordInput.style.borderColor = "#ff3366";
+            passwordInput.focus();
+        }
         return;
     }
 
     const lowerUserInp = rawUserInp.toLowerCase();
 
-    // 1. Direct Admin Check
-    if (lowerUserInp === 'cybhacx' && passInp === 'cybhacx@#Ravi') {
-        currentUser = {
-            password: "cybhacx@#Ravi",
-            role: "admin",
-            name: "cybhacx",
-            username: "cybhacx"
-        };
-        localStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
-        if (err) err.innerText = "";
-        launchAppForUser();
-        return;
+    // 1. Direct Master Admin Check
+    if (lowerUserInp === 'cybhacx') {
+        if (passInp === 'cybhacx@#Ravi') {
+            currentUser = {
+                password: "cybhacx@#Ravi",
+                role: "admin",
+                name: "CYBHACX ADMIN",
+                username: "cybhacx"
+            };
+            sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
+            if (err) err.innerText = "";
+            launchAppForUser();
+            return;
+        } else {
+            if (err) err.innerText = "🚨 ACCESS DENIED: Invalid Admin Passcode!";
+            if (passwordInput) {
+                passwordInput.style.borderColor = "#ff3366";
+                passwordInput.focus();
+            }
+            return;
+        }
     }
 
-    // 2. Flexible User Check (Case-insensitive match across all keys)
+    // 2. Case-Insensitive User Authentication
     database.ref('users').once('value').then((snapshot) => {
         let matchedUser = null;
         let matchedKey = null;
@@ -990,7 +1031,7 @@ function handleLogin() {
         if (snapshot.exists()) {
             snapshot.forEach((child) => {
                 const key = child.key;
-                if (key.toLowerCase() === lowerUserInp) {
+                if (key && key.toLowerCase() === lowerUserInp) {
                     matchedUser = child.val();
                     matchedKey = key;
                 }
@@ -1003,21 +1044,28 @@ function handleLogin() {
                 return;
             }
 
-            // String comparison taaki numeric password bhi sahi match ho
-            if (String(matchedUser.password) === String(passInp)) {
+            if (String(matchedUser.password).trim() === String(passInp).trim()) {
                 currentUser = matchedUser;
                 currentUser.username = matchedKey;
                 if (err) err.innerText = "";
-                localStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
+                sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
                 launchAppForUser();
             } else {
-                if (err) err.innerText = "🚨 ACCESS DENIED: PASSCODE INVALID!";
+                if (err) err.innerText = "🚨 ACCESS DENIED: Incorrect Passcode entered!";
+                if (passwordInput) {
+                    passwordInput.style.borderColor = "#ff3366";
+                    passwordInput.focus();
+                }
             }
         } else {
-            if (err) err.innerText = "🚨 ACCESS DENIED: NODE IDENTITY NOT DEPLOYED!";
+            if (err) err.innerText = "🚨 ACCESS DENIED: System ID [" + rawUserInp + "] not registered!";
+            if (usernameInput) {
+                usernameInput.style.borderColor = "#ff3366";
+                usernameInput.focus();
+            }
         }
     }).catch(e => {
-        if (err) err.innerText = "🚨 FAULT: Database connection error: " + e.message;
+        if (err) err.innerText = "🚨 FAULT: Database connection error (" + e.message + ")";
     });
 }
 
@@ -1097,7 +1145,7 @@ function renderUserLedger() {
     const userTotalSavingsText = document.getElementById('user-total-savings');
     const userTotalEntriesText = document.getElementById('user-total-entries');
     
-    if (!tbody) return;
+    if (!tbody || !currentUser) return;
 
     database.ref('savingRecords').once('value').then(snapshot => {
         let personalTotalAmount = 0;
@@ -1471,7 +1519,7 @@ function handleForgetPassword() {
 
         if (snapshot.exists()) {
             snapshot.forEach((child) => {
-                if (child.key.toLowerCase() === rawUser.toLowerCase()) {
+                if (child.key && child.key.toLowerCase() === rawUser.toLowerCase()) {
                     targetKey = child.key;
                     userData = child.val();
                 }
@@ -1519,7 +1567,7 @@ function submitDailyEntry() {
     
     const entry = {
         userId: currentUser.username,
-        username: currentUser.name,
+        username: currentUser.name || currentUser.username,
         timestamp: new Date().toISOString(),
         amount: parseFloat(amount),
         status: "SECURED",
@@ -1591,57 +1639,64 @@ function renderAdminDashboard(records) {
 }
 
 // ----------------------------------------------------
-// LOGOUT
+// LOGOUT (ISOLATED SESSION TERMINATION)
 // ----------------------------------------------------
 function logout() {
     currentUser = null;
-    localStorage.removeItem('cybhacx_auth_user');
+    sessionStorage.removeItem('cybhacx_auth_user');
     const uInp = document.getElementById('login-username');
     const pInp = document.getElementById('login-password');
-    if (uInp) uInp.value = "";
-    if (pInp) pInp.value = "";
+    if (uInp) {
+        uInp.value = "";
+        uInp.style.borderColor = "";
+    }
+    if (pInp) {
+        pInp.value = "";
+        pInp.style.borderColor = "";
+    }
     document.getElementById('user-screen')?.classList.add('hidden');
     document.getElementById('admin-screen')?.classList.add('hidden');
     document.getElementById('auth-screen')?.classList.remove('hidden');
     const aErr = document.getElementById('admin-create-err');
     const aMsg = document.getElementById('admin-create-msg');
+    const authErr = document.getElementById('auth-error');
     if (aErr) aErr.innerText = "";
     if (aMsg) aMsg.innerText = "";
+    if (authErr) authErr.innerText = "";
 }
 
 // ----------------------------------------------------
-// INITIAL LOAD & INSTANT AUTO-SESSION (ZERO DELAY)
+// INITIAL LOAD & SESSION MOUNT
 // ----------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
     initThemeEngine();
     setupFuturisticEffects();
 
-    const savedUserSession = localStorage.getItem('cybhacx_auth_user');
+    // Isolated tab/window session retrieval via sessionStorage
+    const savedUserSession = sessionStorage.getItem('cybhacx_auth_user');
     if (savedUserSession) {
         try {
             currentUser = JSON.parse(savedUserSession);
-            
-            // 1. Instant Screen Render
             launchAppForUser();
 
-            // 2. Background Sync
+            // Background status check for user lock
             if (currentUser && currentUser.role !== 'admin') {
                 database.ref('users/' + currentUser.username).once('value').then(snapshot => {
                     if (snapshot.exists()) {
                         const latestData = snapshot.val();
                         if (latestData.isLocked === true || latestData.isLocked === "true") {
                             logout();
-                            alert("Your ID is locked by administrator.");
+                            alert("Your ID has been locked by administrator.");
                             return;
                         }
                         currentUser = { ...latestData, username: currentUser.username };
-                        localStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
+                        sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
                         renderUserProfileData();
                     }
                 }).catch(() => {});
             }
         } catch (e) {
-            localStorage.removeItem('cybhacx_auth_user');
+            sessionStorage.removeItem('cybhacx_auth_user');
         }
     }
 
@@ -1649,6 +1704,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginPass = document.getElementById('login-password');
 
     if (loginUser) {
+        loginUser.addEventListener('input', () => {
+            loginUser.style.borderColor = "";
+            const err = document.getElementById('auth-error');
+            if (err) err.innerText = "";
+        });
         loginUser.addEventListener('keydown', function (e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -1658,6 +1718,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (loginPass) {
+        loginPass.addEventListener('input', () => {
+            loginPass.style.borderColor = "";
+            const err = document.getElementById('auth-error');
+            if (err) err.innerText = "";
+        });
         loginPass.addEventListener('keydown', function (e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
