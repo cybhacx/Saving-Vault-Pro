@@ -966,6 +966,21 @@ function handleLogin() {
         return;
     }
 
+    // Admin direct check pehle run karein (database overwrite bypass)
+    if (userInp === 'cybhacx' && passInp === 'cybhacx@#Ravi') {
+        currentUser = {
+            password: "cybhacx@#Ravi",
+            role: "admin",
+            name: "cybhacx",
+            username: "cybhacx"
+        };
+        localStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
+        if (err) err.innerText = "";
+        launchAppForUser();
+        return;
+    }
+
+    // Normal User check
     database.ref('users/' + userInp).once('value').then((snapshot) => {
         if (snapshot.exists()) {
             const userData = snapshot.val();
@@ -985,13 +1000,7 @@ function handleLogin() {
                 if (err) err.innerText = "🚨 ACCESS DENIED: PASSCODE INVALID!";
             }
         } else {
-            if (userInp === 'cybhacx' && passInp === 'cybhacx@#Ravi') {
-                currentUser = { password: "cybhacx@#Ravi", role: "admin", name: "ADMIN CYBHACX", username: "cybhacx" };
-                localStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
-                launchAppForUser();
-            } else {
-                if (err) err.innerText = "🚨 ACCESS DENIED: NODE IDENTITY NOT DEPLOYED!";
-            }
+            if (err) err.innerText = "🚨 ACCESS DENIED: NODE IDENTITY NOT DEPLOYED!";
         }
     }).catch(e => {
         if (err) err.innerText = "🚨 FAULT: Database connection error!";
@@ -1589,20 +1598,22 @@ document.addEventListener('DOMContentLoaded', () => {
             // 1. Instant Screen Render (Firebase response ke wait ke bina)
             launchAppForUser();
 
-            // 2. Silent Background Verification
-            database.ref('users/' + currentUser.username).once('value').then(snapshot => {
-                if (snapshot.exists()) {
-                    const latestData = snapshot.val();
-                    if (latestData.isLocked === true || latestData.isLocked === "true") {
-                        logout();
-                        alert("Your ID is locked by administrator.");
-                        return;
+            // 2. Silent Background Verification (Only for standard users to avoid role overwrite)
+            if (currentUser && currentUser.role !== 'admin') {
+                database.ref('users/' + currentUser.username).once('value').then(snapshot => {
+                    if (snapshot.exists()) {
+                        const latestData = snapshot.val();
+                        if (latestData.isLocked === true || latestData.isLocked === "true") {
+                            logout();
+                            alert("Your ID is locked by administrator.");
+                            return;
+                        }
+                        currentUser = { ...latestData, username: currentUser.username };
+                        localStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
+                        renderUserProfileData();
                     }
-                    currentUser = { ...latestData, username: currentUser.username };
-                    localStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
-                    renderUserProfileData();
-                }
-            }).catch(() => {});
+                }).catch(() => {});
+            }
         } catch (e) {
             localStorage.removeItem('cybhacx_auth_user');
         }
