@@ -444,6 +444,70 @@ body {
     transform: scale(1.15);
 }
 
+/* ====================================================
+   CYBER AUTH DIVIDER & GOOGLE SIGN-IN BUTTON
+   ==================================================== */
+.cyber-auth-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 18px 0 14px 0;
+}
+.cyber-auth-divider::before,
+.cyber-auth-divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid var(--border-color);
+}
+.cyber-auth-divider span {
+    padding: 0 10px;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    font-weight: 700;
+}
+
+.btn-cyber-google {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1.5px solid var(--neon-blue);
+    color: var(--text-main);
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.15);
+}
+.btn-cyber-google:hover {
+    background: rgba(0, 240, 255, 0.12);
+    box-shadow: 0 0 18px rgba(0, 240, 255, 0.4);
+    transform: translateY(-1px);
+}
+.btn-cyber-google:active {
+    transform: translateY(0);
+}
+.google-svg-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+body.day-mode .btn-cyber-google {
+    background: #ffffff;
+    border: 1.5px solid #0284c7;
+    color: #111827;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+body.day-mode .btn-cyber-google:hover {
+    background: #f0f9ff;
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.25);
+}
+
 .profile-card {
     background: var(--card-bg);
     margin-bottom: 20px;

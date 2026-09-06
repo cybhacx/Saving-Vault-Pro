@@ -9,8 +9,13 @@ const firebaseConfig = {
     appId: "1:190574060583:web:eee472df4a0c6be3aa5a02"
 };
 
-firebase.initializeApp(firebaseConfig);
+// Initialize Firebase
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
 const database = firebase.database();
+const auth = firebase.auth();
+const googleProvider = new firebase.auth.GoogleAuthProvider();
 
 const RAZORPAY_KEY_ID = "rzp_live_TW3Dh4C7B3KHW5";
 
@@ -946,7 +951,7 @@ function resetFilters() {
 }
 
 // ----------------------------------------------------
-// AUTHENTICATION & GRANULAR ERROR HANDLING
+// AUTHENTICATION: FAST DIRECT LOOKUP
 // ----------------------------------------------------
 function showForgetPassword() {
     document.getElementById('login-form-group')?.classList.add('hidden');
@@ -973,34 +978,16 @@ function handleLogin() {
     if (passwordInput) passwordInput.style.borderColor = "";
     if (err) err.innerText = "";
 
-    if (!rawUserInp && !passInp) {
+    if (!rawUserInp || !passInp) {
         if (err) err.innerText = "🚨 ACCESS DENIED: Please enter Username and Passcode!";
-        if (usernameInput) usernameInput.style.borderColor = "#ff3366";
-        if (passwordInput) passwordInput.style.borderColor = "#ff3366";
-        return;
-    }
-
-    if (!rawUserInp) {
-        if (err) err.innerText = "🚨 ACCESS DENIED: System ID / Username cannot be empty!";
-        if (usernameInput) {
-            usernameInput.style.borderColor = "#ff3366";
-            usernameInput.focus();
-        }
-        return;
-    }
-
-    if (!passInp) {
-        if (err) err.innerText = "🚨 ACCESS DENIED: Passcode field is blank!";
-        if (passwordInput) {
-            passwordInput.style.borderColor = "#ff3366";
-            passwordInput.focus();
-        }
+        if (usernameInput && !rawUserInp) usernameInput.style.borderColor = "#ff3366";
+        if (passwordInput && !passInp) passwordInput.style.borderColor = "#ff3366";
         return;
     }
 
     const lowerUserInp = rawUserInp.toLowerCase();
 
-    // 1. Direct Master Admin Check
+    // 1. Direct Master Admin Check (Instant)
     if (lowerUserInp === 'cybhacx') {
         if (passInp === 'cybhacx@#Ravi') {
             currentUser = {
@@ -1015,30 +1002,18 @@ function handleLogin() {
             return;
         } else {
             if (err) err.innerText = "🚨 ACCESS DENIED: Invalid Admin Passcode!";
-            if (passwordInput) {
-                passwordInput.style.borderColor = "#ff3366";
-                passwordInput.focus();
-            }
+            if (passwordInput) passwordInput.style.borderColor = "#ff3366";
             return;
         }
     }
 
-    // 2. Case-Insensitive User Authentication
-    database.ref('users').once('value').then((snapshot) => {
-        let matchedUser = null;
-        let matchedKey = null;
+    if (err) err.innerText = "Connecting to Node...";
 
+    // 2. Direct Node Lookup (No full database scanning lag)
+    database.ref('users/' + lowerUserInp).once('value').then((snapshot) => {
         if (snapshot.exists()) {
-            snapshot.forEach((child) => {
-                const key = child.key;
-                if (key && key.toLowerCase() === lowerUserInp) {
-                    matchedUser = child.val();
-                    matchedKey = key;
-                }
-            });
-        }
+            const matchedUser = snapshot.val();
 
-        if (matchedUser) {
             if (matchedUser.isLocked === true || matchedUser.isLocked === "true") {
                 if (err) err.innerText = "🔒 ACCESS LOCKED: Your Node has been restricted by Admin!";
                 return;
@@ -1046,26 +1021,123 @@ function handleLogin() {
 
             if (String(matchedUser.password).trim() === String(passInp).trim()) {
                 currentUser = matchedUser;
-                currentUser.username = matchedKey;
+                currentUser.username = lowerUserInp;
                 if (err) err.innerText = "";
                 sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
                 launchAppForUser();
             } else {
                 if (err) err.innerText = "🚨 ACCESS DENIED: Incorrect Passcode entered!";
-                if (passwordInput) {
-                    passwordInput.style.borderColor = "#ff3366";
-                    passwordInput.focus();
-                }
+                if (passwordInput) passwordInput.style.borderColor = "#ff3366";
             }
         } else {
-            if (err) err.innerText = "🚨 ACCESS DENIED: System ID [" + rawUserInp + "] not registered!";
-            if (usernameInput) {
-                usernameInput.style.borderColor = "#ff3366";
-                usernameInput.focus();
-            }
+            // Fallback for case variations
+            database.ref('users').orderByKey().equalTo(lowerUserInp).once('value').then(fallbackSnap => {
+                if (fallbackSnap.exists()) {
+                    let fUser = null;
+                    let fKey = null;
+                    fallbackSnap.forEach(ch => { fUser = ch.val(); fKey = ch.key; });
+                    if (String(fUser.password).trim() === String(passInp).trim()) {
+                        currentUser = fUser;
+                        currentUser.username = fKey;
+                        sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
+                        launchAppForUser();
+                        return;
+                    }
+                }
+                if (err) err.innerText = "🚨 ACCESS DENIED: System ID [" + rawUserInp + "] not registered!";
+                if (usernameInput) usernameInput.style.borderColor = "#ff3366";
+            }).catch(() => {
+                if (err) err.innerText = "🚨 ACCESS DENIED: System ID [" + rawUserInp + "] not registered!";
+            });
         }
     }).catch(e => {
         if (err) err.innerText = "🚨 FAULT: Database connection error (" + e.message + ")";
+    });
+}
+
+// ----------------------------------------------------
+// GOOGLE SIGN-IN: ROBUST WITH PROTOCOL CHECK
+// ----------------------------------------------------
+function handleGoogleSignIn() {
+    const err = document.getElementById('auth-error');
+    if (err) err.innerText = "Opening Google Sign-In...";
+
+    // Security warning if run directly from file system
+    if (window.location.protocol === 'file:') {
+        alert("Google Sign-In file:/// path par kaam nahi karta. Kripya VS Code ke 'Live Server' (http://localhost) se run karein.");
+        if (err) err.innerText = "⚠️ Error: Live Server required for Google Auth!";
+        return;
+    }
+
+    auth.signInWithPopup(googleProvider).then((result) => {
+        const user = result.user;
+        if (!user) return;
+
+        let cleanUsername = user.email 
+            ? user.email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase() 
+            : 'user_' + user.uid.substring(0, 8);
+
+        const userRef = database.ref('users/' + cleanUsername);
+
+        userRef.once('value').then((snapshot) => {
+            if (snapshot.exists()) {
+                const existingData = snapshot.val();
+                if (existingData.isLocked === true || existingData.isLocked === "true") {
+                    if (err) err.innerText = "🔒 ACCESS LOCKED: Your Node has been restricted by Admin!";
+                    auth.signOut();
+                    return;
+                }
+
+                currentUser = {
+                    ...existingData,
+                    username: cleanUsername,
+                    email: existingData.email || user.email,
+                    profileImg: existingData.profileImg || user.photoURL || DEFAULT_AVATAR
+                };
+
+                // Safe update without overwriting records
+                userRef.update({
+                    email: currentUser.email,
+                    profileImg: currentUser.profileImg
+                });
+
+                sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
+                if (err) err.innerText = "";
+                launchAppForUser();
+            } else {
+                const newUserRecord = {
+                    name: user.displayName || cleanUsername,
+                    email: user.email || 'N/A',
+                    phone: user.phoneNumber || 'Not Set',
+                    dob: 'Not Set',
+                    role: 'user',
+                    isLocked: false,
+                    unlockedFeatures: 'standard',
+                    securityAnswer: 'google_auth',
+                    profileImg: user.photoURL || DEFAULT_AVATAR,
+                    createdAt: new Date().toISOString()
+                };
+
+                userRef.set(newUserRecord).then(() => {
+                    currentUser = { ...newUserRecord, username: cleanUsername };
+                    sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
+                    if (err) err.innerText = "";
+                    launchAppForUser();
+                }).catch(e => {
+                    if (err) err.innerText = "🚨 FAULT: Could not initialize user matrix (" + e.message + ")";
+                });
+            }
+        });
+    }).catch((error) => {
+        if (err) {
+            if (error.code === 'auth/popup-closed-by-user') {
+                err.innerText = "⚠️ Google sign-in cancelled by user.";
+            } else if (error.code === 'auth/unauthorized-domain') {
+                err.innerText = "🚨 Error: Domain unauthorized. Add localhost in Firebase Console.";
+            } else {
+                err.innerText = "🚨 GOOGLE AUTH ERROR: " + error.message;
+            }
+        }
     });
 }
 
@@ -1227,7 +1299,7 @@ function renderUserLedger() {
                 <td>
                     ${isRequested 
                         ? '<span style="color:#ffaa00; font-size:11px;">Request Pending</span>' 
-                        : `<button class="btn-table-req" onclick="requestDeleteEntry('${key}')">Request Delete</button>`}
+                        : `<button type="button" class="btn-table-req" onclick="requestDeleteEntry('${key}')">Request Delete</button>`}
                 </td>
             `;
             tbody.appendChild(tr);
@@ -1513,31 +1585,23 @@ function handleForgetPassword() {
         return;
     }
 
-    database.ref('users').once('value').then((snapshot) => {
-        let targetKey = null;
-        let userData = null;
-
+    const targetUser = rawUser.toLowerCase();
+    database.ref('users/' + targetUser).once('value').then((snapshot) => {
         if (snapshot.exists()) {
-            snapshot.forEach((child) => {
-                if (child.key && child.key.toLowerCase() === rawUser.toLowerCase()) {
-                    targetKey = child.key;
-                    userData = child.val();
-                }
-            });
+            const userData = snapshot.val();
+            if (userData.securityAnswer?.toLowerCase() === security) {
+                database.ref('users/' + targetUser + '/password').set(newPass).then(() => {
+                    if (err) err.innerText = "";
+                    if (succ) succ.innerText = "🟢 SYSTEM INJECT: PASSCODE MODIFIED!";
+                    setTimeout(() => { 
+                        hideForgetPassword(); 
+                        if (succ) succ.innerText = ""; 
+                    }, 1200);
+                });
+                return;
+            }
         }
-
-        if (userData && userData.securityAnswer?.toLowerCase() === security) {
-            database.ref('users/' + targetKey + '/password').set(newPass).then(() => {
-                if (err) err.innerText = "";
-                if (succ) succ.innerText = "🟢 SYSTEM INJECT: PASSCODE MODIFIED!";
-                setTimeout(() => { 
-                    hideForgetPassword(); 
-                    if (succ) succ.innerText = ""; 
-                }, 1200);
-            });
-        } else {
-            if (err) err.innerText = "🚨 CRITICAL BREACH: ANSWER SIGNATURE INVALID!";
-        }
+        if (err) err.innerText = "🚨 CRITICAL BREACH: ANSWER SIGNATURE INVALID!";
     });
 }
 
@@ -1624,7 +1688,7 @@ function renderAdminDashboard(records) {
             <td><span style="color:${isDeleteReq ? '#ffaa00' : '#00ff66'};">// ${isDeleteReq ? 'REQ DELETION' : (record.status || 'SECURED')}</span></td>
             <td>${record.signature ? `<img src="${record.signature}" class="sig-img" alt="signature"/>` : '<span style="color:#6b7280;">NO SIGN</span>'}</td>
             <td>
-                <button class="btn-table-del" onclick="deleteRecordByAdmin('${record._key}')">DELETE</button>
+                <button type="button" class="btn-table-del" onclick="deleteRecordByAdmin('${record._key}')">DELETE</button>
             </td>
         `;
         tbody.appendChild(row);
@@ -1644,6 +1708,8 @@ function renderAdminDashboard(records) {
 function logout() {
     currentUser = null;
     sessionStorage.removeItem('cybhacx_auth_user');
+    auth.signOut().catch(() => {});
+    
     const uInp = document.getElementById('login-username');
     const pInp = document.getElementById('login-password');
     if (uInp) {
@@ -1672,14 +1738,12 @@ document.addEventListener('DOMContentLoaded', () => {
     initThemeEngine();
     setupFuturisticEffects();
 
-    // Isolated tab/window session retrieval via sessionStorage
     const savedUserSession = sessionStorage.getItem('cybhacx_auth_user');
     if (savedUserSession) {
         try {
             currentUser = JSON.parse(savedUserSession);
             launchAppForUser();
 
-            // Background status check for user lock
             if (currentUser && currentUser.role !== 'admin') {
                 database.ref('users/' + currentUser.username).once('value').then(snapshot => {
                     if (snapshot.exists()) {

@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>⚡ CYBHACX MONEY ⚡</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
 </head>
 <body>
 
@@ -47,7 +46,24 @@
                         <button type="button" class="btn-toggle-eye" onclick="togglePassVisibility('login-password', this)">👁️</button>
                     </div>
                 </div>
-                <button onclick="handleLogin()" class="btn-cyber btn-glow-blue">INITIALIZE LOGIN</button>
+                <button type="button" onclick="handleLogin()" class="btn-cyber btn-glow-blue">INITIALIZE LOGIN</button>
+
+                <!-- OR DIVIDER -->
+                <div class="cyber-auth-divider">
+                    <span>// OR CONNECT VIA SECURE CLOUD //</span>
+                </div>
+
+                <!-- GOOGLE SIGN-IN BUTTON -->
+                <button type="button" id="btn-google-login" onclick="handleGoogleSignIn()" class="btn-cyber btn-cyber-google">
+                    <svg class="google-svg-icon" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
+                        <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
+                        <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                        <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                    </svg>
+                    CONTINUE WITH GOOGLE
+                </button>
+
                 <p class="forget-link" onclick="showForgetPassword()">[ FORGET PASSWORD? ]</p>
             </div>
 
@@ -68,7 +84,7 @@
                         <button type="button" class="btn-toggle-eye" onclick="togglePassVisibility('forget-new-password', this)">👁️</button>
                     </div>
                 </div>
-                <button onclick="handleForgetPassword()" class="btn-cyber btn-glow-pink">OVERWRITE PASSCODE</button>
+                <button type="button" onclick="handleForgetPassword()" class="btn-cyber btn-glow-pink">OVERWRITE PASSCODE</button>
                 <p class="forget-link" onclick="hideForgetPassword()">[ BACK TO LOGIN ]</p>
             </div>
 
@@ -210,7 +226,7 @@
         <div id="user-screen" class="screen hidden">
             <div class="card header">
                 <h2>👋 USER: <span id="user-display-name" class="txt-green">Agent</span> <span id="user-plan-badge" class="plan-badge" style="vertical-align: middle; margin-left: 8px;">FREE</span></h2>
-                <button onclick="logout()" class="btn-disconnect">LOGOUT</button>
+                <button type="button" onclick="logout()" class="btn-disconnect">LOGOUT</button>
             </div>
 
             <div class="stats-container">
@@ -235,7 +251,7 @@
                             <p class="txt-muted" style="margin: 4px 0 0 0; font-size: 13px;">SYSTEM ID: <span id="profile-card-id" class="txt-pink" style="font-weight: bold;">NODE_ID</span></p>
                         </div>
                     </div>
-                    <button class="btn-table-edit" style="padding: 8px 16px; font-size: 12px;" onclick="toggleEditProfileDeck()">⚙️ EDIT PROFILE</button>
+                    <button type="button" class="btn-table-edit" style="padding: 8px 16px; font-size: 12px;" onclick="toggleEditProfileDeck()">⚙️ EDIT PROFILE</button>
                 </div>
 
                 <div class="profile-details-grid">
@@ -282,8 +298,8 @@
                         </div>
                     </div>
                     <div style="display: flex; gap: 10px; margin-top: 15px;">
-                        <button onclick="saveUserProfileChanges()" class="btn-cyber btn-glow-green" style="flex: 1; padding: 10px;">SAVE UPDATES</button>
-                        <button onclick="toggleEditProfileDeck()" class="btn-reset-filter" style="width: 120px;">CANCEL</button>
+                        <button type="button" onclick="saveUserProfileChanges()" class="btn-cyber btn-glow-green" style="flex: 1; padding: 10px;">SAVE UPDATES</button>
+                        <button type="button" onclick="toggleEditProfileDeck()" class="btn-reset-filter" style="width: 120px;">CANCEL</button>
                     </div>
                     <p id="profile-save-msg" class="success-text" style="margin-bottom:0;"></p>
                 </div>
@@ -319,7 +335,7 @@
                     </div>
                 </div>
 
-                <button onclick="submitDailyEntry()" class="btn-cyber btn-glow-green" style="margin-top: 25px;">UPLOAD ENTRY </button>
+                <button type="button" onclick="submitDailyEntry()" class="btn-cyber btn-glow-green" style="margin-top: 25px;">UPLOAD ENTRY </button>
                 <p id="user-msg" class="success-text"></p>
             </div>
 
@@ -329,7 +345,7 @@
                         <h3 class="txt-pink" style="margin: 0;">🚀 VIP ADVANCED SAVINGS ANALYTICS</h3>
                         <p class="subtitle" style="text-align: left; margin: 4px 0 0 0;">Visual progress chart and personal goal tracker.</p>
                     </div>
-                    <button onclick="downloadUserFilteredData()" class="btn-download">⬇️ DOWNLOAD CSV </button>
+                    <button type="button" onclick="downloadUserFilteredData()" class="btn-download">⬇️ DOWNLOAD CSV </button>
                 </div>
 
                 <div style="margin-top: 20px; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px;">
@@ -345,40 +361,37 @@
                     </div>
                 </div>
 
-                <div id="user-vip-filter-deck" class="hidden" style="margin-top: 15px; margin-bottom: 15px; padding: 12px; background: var(--item-bg); border-radius: 8px; border: 1px solid var(--border-color);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <span class="txt-pink" style="font-size: 12px; font-weight: bold;">⚡ VIP CHRONOLOGICAL DATA FILTERS</span>
-                        <button type="button" onclick="resetUserVIPFilters()" class="btn-reset-filter" style="padding: 4px 10px; font-size: 10px;">RESET</button>
+                <div id="user-vip-filter-deck" class="filter-grid hidden" style="margin-bottom: 15px;">
+                    <div class="input-group">
+                        <label>YEAR</label>
+                        <select id="user-filter-year">
+                            <option value="ALL">All Years</option>
+                        </select>
                     </div>
-                    <div class="filter-grid">
-                        <div class="input-group">
-                            <label>FILTER BY YEAR</label>
-                            <select id="user-filter-year" onchange="renderUserLedger()">
-                                <option value="ALL">All Years</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label>FILTER BY MONTH</label>
-                            <select id="user-filter-month" onchange="renderUserLedger()">
-                                <option value="ALL">All Months</option>
-                                <option value="0">January</option>
-                                <option value="1">February</option>
-                                <option value="2">March</option>
-                                <option value="3">April</option>
-                                <option value="4">May</option>
-                                <option value="5">June</option>
-                                <option value="6">July</option>
-                                <option value="7">August</option>
-                                <option value="8">September</option>
-                                <option value="9">October</option>
-                                <option value="10">November</option>
-                                <option value="11">December</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label>EXACT DATE</label>
-                            <input type="date" id="user-filter-date" onchange="renderUserLedger()">
-                        </div>
+                    <div class="input-group">
+                        <label>MONTH</label>
+                        <select id="user-filter-month">
+                            <option value="ALL">All Months</option>
+                            <option value="0">January</option>
+                            <option value="1">February</option>
+                            <option value="2">March</option>
+                            <option value="3">April</option>
+                            <option value="4">May</option>
+                            <option value="5">June</option>
+                            <option value="6">July</option>
+                            <option value="7">August</option>
+                            <option value="8">September</option>
+                            <option value="9">October</option>
+                            <option value="10">November</option>
+                            <option value="11">December</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>EXACT DATE</label>
+                        <input type="date" id="user-filter-date">
+                    </div>
+                    <div style="display:flex; align-items:flex-end;">
+                        <button type="button" onclick="resetUserVIPFilters()" class="btn-reset-filter" style="width:100%; height:44px;">RESET FILTERS</button>
                     </div>
                 </div>
 
@@ -387,7 +400,7 @@
                         <thead>
                             <tr>
                                 <th>TIMESTAMP</th>
-                                <th>SAVINGS</th>
+                                <th>AMOUNT</th>
                                 <th>STATUS</th>
                                 <th>ACTION</th>
                             </tr>
@@ -398,204 +411,54 @@
             </div>
         </div>
 
+        <!-- ADMIN SCREEN -->
         <div id="admin-screen" class="screen hidden">
             <div class="card header admin-header">
-                <h2 class="neon-title-mini"> 👑 CYBHACX ADMINPANEL</h2>
-                <button onclick="logout()" class="btn-disconnect">LOGOUT</button>
+                <h2>⚡ CENTRAL NODE ADMIN</h2>
+                <button type="button" onclick="logout()" class="btn-disconnect">LOGOUT</button>
             </div>
 
             <div class="stats-container">
-                <div class="card stat-box glow-border-blue">
-                    <h3>TOTAL BALANCES</h3>
-                    <p class="stat-number txt-blue-glow">₹<span id="total-pool-money">0</span></p>
+                <div class="card stat-box glow-border-green">
+                    <h3>CENTRAL POOL AMOUNT</h3>
+                    <p class="stat-number txt-green">₹<span id="total-pool-money">0</span></p>
                 </div>
-                <div class="card stat-box glow-border-pink">
-                    <h3>TOTAL ENTRIES </h3>
-                    <p class="stat-number txt-pink-glow"><span id="total-entries-count">0</span></p>
+                <div class="card stat-box glow-border-blue">
+                    <h3>SYSTEM TOTAL ENTRIES</h3>
+                    <p class="stat-number txt-blue-glow"><span id="total-entries-count">0</span></p>
                 </div>
             </div>
 
-            <div class="card glow-border-green" style="padding: 20px; margin-top: -10px;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:12px; font-weight:bold;">
-                    <span class="txt-green">🎯 TARGET SAVINGS(GOAL: ₹<span id="target-goal-val">1,00,000</span>)</span>
-                    <span id="progress-percent-txt" class="txt-green">0%</span>
+            <div class="card glow-border-pink">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span style="font-size:12px; font-weight:bold; letter-spacing:1px;">GRID SAVINGS TARGET (₹1,00,000)</span>
+                    <span id="progress-percent-txt" class="txt-pink" style="font-weight:bold; font-size:13px;">0%</span>
                 </div>
                 <div class="progress-track">
                     <div id="target-progress-fill" class="progress-fill"></div>
                 </div>
             </div>
 
-            <div class="card glow-border-pink" style="margin-top: 20px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                    <div>
-                        <h3 class="txt-pink" style="margin: 0;">📊 ADMINADVANCED ANALYTICS</h3>
-                        <p class="subtitle" style="text-align: left; margin: 4px 0 0 0;">Visual chronological deposit trends & filter synced telemetry.</p>
-                    </div>
-                </div>
-                <div style="margin-top: 15px; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; height: 260px;">
-                    <canvas id="admin-master-chart"></canvas>
-                </div>
-            </div>
-
-            <div class="card glow-border-pink" style="margin-top: 15px;">
-                <h3 class="txt-pink" style="margin-top:0;">🛠️ CREATE USER PROFILES, LOCK & FEATURE CONTROLLER</h3>
-                <div class="admin-form-grid">
-                    <div class="input-group">
-                        <label>USER / SYSTEM ID</label>
-                        <input type="text" id="signup-username" placeholder="e.g. rahul">
-                    </div>
-                    <div class="input-group">
-                        <label>FULL NAME</label>
-                        <input type="text" id="signup-name" placeholder="e.g. Rahul Sharma">
-                    </div>
-                    <div class="input-group">
-                        <label>EMAIL ADDRESS</label>
-                        <input type="email" id="signup-email" placeholder="e.g. rahul@mail.com">
-                    </div>
-                    <div class="input-group">
-                        <label>CONTACT NUMBER</label>
-                        <input type="text" id="signup-phone" placeholder="e.g. 9876543210">
-                    </div>
-                    <div class="input-group">
-                        <label>DATE OF BIRTH</label>
-                        <input type="date" id="signup-dob">
-                    </div>
-                    <div class="input-group">
-                        <label>SECURITY ANSWER</label>
-                        <input type="text" id="signup-security" placeholder="Security answer">
-                    </div>
-                    <div class="input-group">
-                        <label>PASSCODE</label>
-                        <div class="password-wrapper">
-                            <input type="password" id="signup-password" placeholder="••••••••">
-                            <button type="button" class="btn-toggle-eye" onclick="togglePassVisibility('signup-password', this)">👁️</button>
-                        </div>
-                    </div>
-                    <div class="input-group">
-                        <label>ACCOUNT ROLE</label>
-                        <select id="signup-role">
-                            <option value="user">Standard User (Agent)</option>
-                            <option value="admin">System Admin (CYBHACX)</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label>ACCESS LOCK STATUS</label>
-                        <select id="signup-is-locked">
-                            <option value="false">🟢 Active (Unlocked)</option>
-                            <option value="true">🔒 Locked / Restricted</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label>FEATURE ACCESS LEVEL</label>
-                        <select id="signup-features-unlocked">
-                            <option value="standard">Standard Free Tier</option>
-                            <option value="vip">🚀 VIP / Pro Features Unlocked</option>
-                        </select>
-                    </div>
-                    <div class="input-group" style="grid-column: 1 / -1;">
-                        <label>USER AVATAR / PROFILE PICTURE</label>
-                        <div style="display: flex; gap: 15px; align-items: center;">
-                            <input type="file" id="signup-profile-file" accept="image/*" onchange="handleAdminImageUpload(event)" style="flex: 1;">
-                            <div class="admin-avatar-preview" id="admin-avatar-preview-box">
-                                <img id="admin-preview-img" src="" alt="Avatar" class="hidden">
-                                <span id="admin-preview-placeholder" style="font-size: 10px; color: #6b7280;">NO PIC</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div style="display: flex; gap: 10px; margin-top: 15px;">
-                    <button onclick="handleAdminCreateUser()" class="btn-cyber btn-glow-pink">PROVISION / UPDATE ACCOUNT</button>
-                    <button onclick="clearProfileForm()" class="btn-reset-filter" style="width: 150px;">CLEAR FORM</button>
-                </div>
-                <p id="admin-create-msg" class="success-text"></p>
-                <p id="admin-create-err" class="error-text"></p>
-
-                <div class="table-container" style="margin-top: 15px;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>AVATAR</th>
-                                <th>SYSTEM ID</th>
-                                <th>FULL NAME</th>
-                                <th>CONTACT DETAILS</th>
-                                <th>STATUS / ACCESS</th>
-                                <th>FEATURES</th>
-                                <th>SECURITY KEY</th>
-                                <th>ADMIN CONTROLS</th>
-                            </tr>
-                        </thead>
-                        <tbody id="user-profiles-body"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="card glow-border-blue" style="margin-top: 25px;">
-                <h3 class="txt-blue" style="margin-top:0;">📋 FREE PASS ONBOARDING REQUESTS</h3>
-                <p class="subtitle" style="text-align:left; margin-bottom: 12px;">Users requesting zero-cost standard access.</p>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>TIMESTAMP</th>
-                                <th>PROPOSED ID</th>
-                                <th>NAME & CONTACT</th>
-                                <th>DOB</th>
-                                <th>ACTION</th>
-                            </tr>
-                        </thead>
-                        <tbody id="admin-free-requests-body"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="card glow-border-green" style="margin-top: 25px;">
-                <h3 class="txt-green" style="margin-top:0;">💳 ₹10 ACCESS PASS PAYMENT QUEUE</h3>
-                <p class="subtitle" style="text-align:left; margin-bottom: 12px;">Users who completed ₹10 payment for PRO credentials.</p>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>TIMESTAMP</th>
-                                <th>PROPOSED ID</th>
-                                <th>NAME & CONTACT</th>
-                                <th>PAYMENT REF</th>
-                                <th>STATUS</th>
-                                <th>QUICK ACTION</th>
-                            </tr>
-                        </thead>
-                        <tbody id="admin-payments-body"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="card glow-border-blue" style="margin-top: 25px;">
+            <div class="card glow-border-blue">
                 <div class="filter-header-flex">
-                    <h3 class="txt-blue" style="margin:0;">🔍 FILTER CONTROL DECK</h3>
-                    <div style="display: flex; gap: 10px;">
-                        <button onclick="downloadFilteredData()" class="btn-download">⬇️ DOWNLOAD CSV</button>
-                        <button onclick="resetFilters()" class="btn-reset-filter">RESET FILTERS</button>
+                    <h3 class="txt-blue" style="margin: 0;">⚡ MASTER LEDGER MATRIX</h3>
+                    <div style="display:flex; gap:8px;">
+                        <button type="button" onclick="downloadFilteredData()" class="btn-download">⬇️ CSV EXPORT</button>
+                        <button type="button" onclick="resetFilters()" class="btn-reset-filter">RESET</button>
                     </div>
-                </div>
-                
-                <div class="input-group" style="margin-bottom: 15px;">
-                    <input type="text" id="admin-search-input" placeholder="🔍 Search anywhere across live records (Name, amount, status)..." onkeyup="applyMatrixFilters()">
                 </div>
 
-                <div class="filter-grid">
+                <div class="filter-grid" style="margin-bottom: 15px;">
                     <div class="input-group">
-                        <label>FILTER BY OPERATOR</label>
-                        <select id="filter-user" onchange="applyMatrixFilters()">
-                            <option value="ALL">All Operators</option>
-                        </select>
+                        <label>OPERATOR</label>
+                        <select id="filter-user" onchange="applyMatrixFilters()"></select>
                     </div>
                     <div class="input-group">
-                        <label>FILTER BY YEAR</label>
-                        <select id="filter-year" onchange="applyMatrixFilters()">
-                            <option value="ALL">All Years</option>
-                        </select>
+                        <label>YEAR</label>
+                        <select id="filter-year" onchange="applyMatrixFilters()"></select>
                     </div>
                     <div class="input-group">
-                        <label>FILTER BY MONTH</label>
+                        <label>MONTH</label>
                         <select id="filter-month" onchange="applyMatrixFilters()">
                             <option value="ALL">All Months</option>
                             <option value="0">January</option>
@@ -613,35 +476,180 @@
                         </select>
                     </div>
                     <div class="input-group">
-                        <label>EXACT DATE (OPTIONAL)</label>
+                        <label>DATE</label>
                         <input type="date" id="filter-date" onchange="applyMatrixFilters()">
                     </div>
                 </div>
+
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <input type="text" id="admin-search-input" placeholder="🔍 Search records by ID, amount, timestamp..." onkeyup="applyMatrixFilters()">
+                </div>
+
+                <div style="margin: 15px 0 20px 0; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px;">
+                    <canvas id="admin-master-chart" height="110"></canvas>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>OPERATOR</th>
+                                <th>TIMESTAMP</th>
+                                <th>AMOUNT</th>
+                                <th>STATUS</th>
+                                <th>SIGNATURE</th>
+                                <th>ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody id="records-body"></tbody>
+                    </table>
+                </div>
             </div>
 
-            <div class="card table-container glow-border-green" style="margin-top: 25px;">
-                <h3 class="txt-green" style="margin-top:0;">📋 LIVE TRANSACTION & ATTENDANCE LEDGERS</h3>
-                <table id="records-table">
-                    <thead>
-                        <tr>
-                            <th>OPERATOR</th>
-                            <th>TIME</th>
-                            <th>CREDITS EXTRACTED</th>
-                            <th>STATUS</th>
-                            <th>SECURE SIGNATURE</th>
-                            <th>ADMIN ACTIONS</th>
-                        </tr>
-                    </thead>
-                    <tbody id="records-body"></tbody>
-                </table>
+            <!-- PROVISION USER PROFILE -->
+            <div class="card glow-border-pink">
+                <h3 class="txt-pink">⚡ PROVISION / UPDATE NODE OPERATOR</h3>
+                <div class="admin-form-grid">
+                    <div class="input-group">
+                        <label>SYSTEM ID (USERNAME)</label>
+                        <input type="text" id="signup-username" placeholder="e.g. agent_07">
+                    </div>
+                    <div class="input-group">
+                        <label>FULL NAME</label>
+                        <input type="text" id="signup-name" placeholder="Full Name">
+                    </div>
+                    <div class="input-group">
+                        <label>EMAIL ADDRESS</label>
+                        <input type="email" id="signup-email" placeholder="agent@network.io">
+                    </div>
+                    <div class="input-group">
+                        <label>CONTACT PHONE</label>
+                        <input type="text" id="signup-phone" placeholder="Contact number">
+                    </div>
+                    <div class="input-group">
+                        <label>DATE OF BIRTH</label>
+                        <input type="date" id="signup-dob">
+                    </div>
+                    <div class="input-group">
+                        <label>SECURITY ANSWER (FORGET RECOVERY)</label>
+                        <input type="text" id="signup-security" placeholder="Security secret">
+                    </div>
+                    <div class="input-group">
+                        <label>PASSCODE</label>
+                        <input type="password" id="signup-password" placeholder="Passcode">
+                    </div>
+                    <div class="input-group">
+                        <label>ROLE</label>
+                        <select id="signup-role">
+                            <option value="user">User Node</option>
+                            <option value="admin">System Admin</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>LOCK STATUS</label>
+                        <select id="signup-is-locked">
+                            <option value="false">Active</option>
+                            <option value="true">Locked</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>FEATURE LEVEL</label>
+                        <select id="signup-features-unlocked">
+                            <option value="standard">Standard Pass</option>
+                            <option value="vip">PRO VIP Pass</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="input-group" style="margin-top:10px;">
+                    <label>PROFILE PICTURE</label>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div class="admin-avatar-preview">
+                            <img id="admin-preview-img" src="" class="hidden" alt="Preview">
+                            <span id="admin-preview-placeholder" style="font-size:18px;">👤</span>
+                        </div>
+                        <input type="file" id="signup-profile-file" accept="image/*" onchange="handleAdminImageUpload(event)">
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:10px; margin-top:15px;">
+                    <button type="button" onclick="handleAdminCreateUser()" class="btn-cyber btn-glow-pink" style="flex:1;">SAVE NODE DATA</button>
+                    <button type="button" onclick="clearProfileForm()" class="btn-reset-filter" style="width:120px;">CLEAR</button>
+                </div>
+                <p id="admin-create-msg" class="success-text"></p>
+                <p id="admin-create-err" class="error-text"></p>
             </div>
+
+            <!-- REGISTERED USERS LIST -->
+            <div class="card glow-border-blue">
+                <h3 class="txt-blue">👥 REGISTERED OPERATOR NODES</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>AVATAR</th>
+                                <th>NODE ID</th>
+                                <th>NAME</th>
+                                <th>CONTACT MATRIX</th>
+                                <th>LOCK STATE</th>
+                                <th>TIER</th>
+                                <th>SECURITY KEY</th>
+                                <th>ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-profiles-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- FREE REQUESTS & PAYMENTS -->
+            <div class="card glow-border-blue">
+                <h3 class="txt-blue">⚡ PENDING FREE ACCESS APPLICATIONS</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>TIME</th>
+                                <th>REQUEST ID</th>
+                                <th>DETAILS</th>
+                                <th>DOB</th>
+                                <th>ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-free-requests-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card glow-border-pink">
+                <h3 class="txt-pink">💳 PRO VIP RAZORPAY VERIFICATIONS</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>TIME</th>
+                                <th>SYSTEM ID</th>
+                                <th>PAYER DETAILS</th>
+                                <th>PAYMENT REF</th>
+                                <th>AMOUNT</th>
+                                <th>ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-payments-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
 
     </div>
 
-    <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-    <script src="script.js" defer></script>
+    <!-- Scripts at end of body for instant DOM and script loading -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
