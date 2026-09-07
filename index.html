@@ -16,8 +16,14 @@
         </button>
     </div>
 
+    <!-- FLOATING HELP & SUPPORT TRIGGER -->
+    <button type="button" id="help-support-fab" class="help-fab-btn" onclick="toggleSupportModal()">
+        💬 <span class="fab-text">HELP</span>
+    </button>
+
     <div class="container">
         
+        <!-- AUTHENTICATION SCREEN -->
         <div id="auth-screen" class="screen card active-screen">
             <h1 class="neon-title">⚡ CYBHACX MONEY</h1>
             <p class="subtitle">SECURE ASSET & ATTENDANCE MAINBOARD</p>
@@ -27,7 +33,7 @@
                     <span class="plan-badge">LIMITED OFFER</span>
                     <span class="plan-price">₹10 <small>/ Per Month</small></span>
                 </div>
-                <p class="plan-desc">Get instant access to attendance logging, saving vault & biometric verification matrix.</p>
+                <p class="plan-desc">Instant access to attendance logging, saving vault, glowing charts & biometric Portal.</p>
                 <div class="promo-btn-group">
                     <button type="button" onclick="showPaymentModal()" class="btn-cyber btn-glow-green btn-plan-pulse" style="flex:1;">⚡ GET PRO PASS (₹10) ⚡</button>
                     <button type="button" onclick="showFreeRequestModal()" class="btn-cyber btn-glow-blue" style="flex:1;">FREE ACCESS PASS</button>
@@ -43,17 +49,16 @@
                     <label><span class="txt-blue">►</span> PASSCODE </label>
                     <div class="password-wrapper">
                         <input type="password" id="login-password" placeholder="••••••••">
-                        <button type="button" class="btn-toggle-eye" onclick="togglePassVisibility('login-password', this)">👁️</button>
+                        <button type="button" class="btn-toggle-eye" onclick="togglePassVisibility('login-password', this)">🙈</button>
                     </div>
                 </div>
                 <button type="button" onclick="handleLogin()" class="btn-cyber btn-glow-blue">INITIALIZE LOGIN</button>
 
-                <!-- OR DIVIDER -->
+                <!-- SECURE CLOUD AUTH -->
                 <div class="cyber-auth-divider">
-                    <span>// OR CONNECT VIA SECURE CLOUD //</span>
+                    <span>// OR CONNECT //</span>
                 </div>
 
-                <!-- GOOGLE SIGN-IN BUTTON -->
                 <button type="button" id="btn-google-login" onclick="handleGoogleSignIn()" class="btn-cyber btn-cyber-google">
                     <svg class="google-svg-icon" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
@@ -74,14 +79,14 @@
                     <input type="text" id="forget-username" placeholder="Username...">
                 </div>
                 <div class="input-group">
-                    <label>MASTER SECURITY ANSWER</label>
+                    <label>SECURITY ANSWER</label>
                     <input type="text" id="forget-security" placeholder="Security key...">
                 </div>
                 <div class="input-group">
                     <label>NEW SECURITY PASSCODE</label>
                     <div class="password-wrapper">
                         <input type="password" id="forget-new-password" placeholder="••••••••">
-                        <button type="button" class="btn-toggle-eye" onclick="togglePassVisibility('forget-new-password', this)">👁️</button>
+                        <button type="button" class="btn-toggle-eye" onclick="togglePassVisibility('forget-new-password', this)">🙈</button>
                     </div>
                 </div>
                 <button type="button" onclick="handleForgetPassword()" class="btn-cyber btn-glow-pink">OVERWRITE PASSCODE</button>
@@ -95,27 +100,25 @@
                         <h5>FREE PASS</h5>
                         <p class="comp-price">₹0</p>
                         <ul>
-                            <li>✔️ Daily Saving Logging</li>
-                            <li>✔️ Draw Signature Pad</li>
-                            <li>❌ Photo Signature Upload</li>
-                            <li>❌ CSV Ledger Download</li>
-                            <li>❌ Visual Analytics & Graphs</li>
-                            <li>❌ Personal Goal Trackers</li>
-                            <li>❌ Date Filters</li>
+                            <li>✔️ Daily Saving Vault</li>
+                            <li>✔️ Biometric Draw Signature</li>
+                            <li>❌ Image Signature Upload</li>
+                            <li>❌ Visual Analytics & Glowing Graphs</li>
+                            <li>❌ Filters Logged Entries Table</li>
+                            <li>❌ Custom Target Customization</li>
                         </ul>
                     </div>
                     <div class="comparison-col pro-tier">
-                        <span class="popular-tag">MOST POPULAR</span>
+                        <span class="popular-tag">PRO STATUS</span>
                         <h5 class="txt-pink">PRO VIP PASS</h5>
                         <p class="comp-price txt-green">₹10<small>/mo</small></p>
                         <ul>
-                            <li>✔️ Daily Saving Logging</li>
-                            <li>✔️ Draw Signature Pad</li>
-                            <li>✔️ Transparent Photo Sign</li>
-                            <li>✔️ Unlimited CSV Downloads</li>
-                            <li>✔️ Visual Analytics & Graphs</li>
-                            <li>✔️ Personal Goal Trackers</li>
-                            <li>✔️ Date Filters</li>
+                            <li>✔️ Daily Saving Vault</li>
+                            <li>✔️ Biometric Draw & Image Signature</li>
+                            <li>✔️ Glowing Graphs & Advanced Trends</li>
+                            <li>✔️ Filters Logged Entries Table</li>
+                            <li>✔️ Custom Saving Target Setting</li>
+                            <li>✔️ CSV Ledger Downloads</li>
                         </ul>
                     </div>
                 </div>
@@ -125,48 +128,49 @@
             <p id="auth-success" class="success-text"></p>
         </div>
 
+        <!-- PAYMENT MODAL -->
         <div id="payment-modal" class="cyber-modal-overlay hidden">
             <div class="cyber-modal-card glow-border-pink">
                 <div class="modal-header-flex">
                     <h3 class="txt-pink" style="margin: 0;">⚡ ACTIVATION PAYMENT (PRO VIP)</h3>
                     <button class="btn-modal-close" onclick="hidePaymentModal()">✕</button>
                 </div>
-                <p class="subtitle" style="text-align: left; margin: 8px 0 16px 0;">Enter details to initiate ₹10 payment & reserve PRO pass.</p>
+                <p class="subtitle" style="text-align: left; margin: 8px 0 16px 0;">Provide credentials to reserve your VIP license.</p>
 
                 <div id="payment-form-step">
                     <div class="input-group">
                         <label>FULL NAME</label>
-                        <input type="text" id="pay-name" placeholder="e.g. Rahul Sharma">
+                        <input type="text" id="pay-name" placeholder="Full name...">
                     </div>
                     <div class="input-group">
                         <label>EMAIL ADDRESS</label>
-                        <input type="email" id="pay-email" placeholder="e.g. rahul@gmail.com">
+                        <input type="email" id="pay-email" placeholder="email@provider.com">
                     </div>
                     <div class="input-group">
                         <label>CONTACT NUMBER</label>
-                        <input type="text" id="pay-phone" placeholder="e.g. 98765xxxxx">
+                        <input type="text" id="pay-phone" placeholder="Contact number...">
                     </div>
                     <div class="input-group">
-                        <label>DESIRED SYSTEM ID (USERNAME)</label>
-                        <input type="text" id="pay-username" placeholder="e.g. rahul_agent">
+                        <label>USERNAME SYSTEM ID</label>
+                        <input type="text" id="pay-username" placeholder="Username (letters & numbers)...">
                     </div>
 
                     <div class="plan-price-summary">
-                        <span>SELECTED PLAN</span>
+                        <span>PLAN ACTIVATION</span>
                         <span class="txt-green" style="font-weight: bold; font-size: 16px;">PRO VIP (₹10/mo)</span>
                     </div>
 
-                    <button type="button" onclick="initiateRazorpayPayment()" class="btn-cyber btn-glow-pink" style="margin-top: 15px;">PROCEED TO PAYMENT GATEWAY (₹10)</button>
+                    <button type="button" onclick="initiateRazorpayPayment()" class="btn-cyber btn-glow-pink" style="margin-top: 15px;">INITIALIZE GATEWAY (₹10)</button>
                     <p id="payment-err" class="error-text"></p>
                 </div>
 
                 <div id="payment-success-step" class="hidden">
                     <div class="cyber-success-beacon">
-                        <h2 class="txt-green" style="margin: 0 0 10px 0;">✅ PAYMENT CONFIRMED</h2>
-                        <p class="txt-blue" style="font-size: 14px; font-weight: bold;">PAYMENT REF: <span id="conf-pay-id" class="txt-pink">PAY_ID</span></p>
+                        <h2 class="txt-green" style="margin: 0 0 10px 0;">✅ PAYMENT RECORDED</h2>
+                        <p class="txt-blue" style="font-size: 14px; font-weight: bold;">PAYMENT ID: <span id="conf-pay-id" class="txt-pink">PAY_ID</span></p>
                         <div class="confirmation-notice-box">
                             <p style="margin: 0; font-size: 13px; line-height: 1.6;">
-                                🛡️ <b>Access Request Queued:</b> System Admin verification is active. Your PRO credentials will be issued within <b>1 to 5 minutes</b>.
+                                🛡️ <b>Access Request Dispatched:</b> Admin verification is active. Your node will be granted full VIP clearance shortly.
                             </p>
                         </div>
                         <button type="button" onclick="hidePaymentModal()" class="btn-cyber btn-glow-blue" style="margin-top: 20px;">RETURN TO LOGIN</button>
@@ -175,13 +179,14 @@
             </div>
         </div>
 
+        <!-- FREE REGISTRATION MODAL -->
         <div id="free-request-modal" class="cyber-modal-overlay hidden">
             <div class="cyber-modal-card glow-border-blue">
                 <div class="modal-header-flex">
-                    <h3 class="txt-blue" style="margin: 0;">⚡ FREE PLAN ENROLLMENT</h3>
+                    <h3 class="txt-blue" style="margin: 0;">⚡ FREE PLAN APPLICATION</h3>
                     <button class="btn-modal-close" onclick="hideFreeRequestModal()">✕</button>
                 </div>
-                <p class="subtitle" style="text-align: left; margin: 8px 0 16px 0;">Apply for free system node credential access.</p>
+                <p class="subtitle" style="text-align: left; margin: 8px 0 16px 0;">Apply for free with basic features.</p>
 
                 <div id="free-form-step">
                     <div class="input-group">
@@ -197,7 +202,7 @@
                         <input type="text" id="free-phone" placeholder="Phone Number">
                     </div>
                     <div class="input-group">
-                        <label>DESIRED SYSTEM ID (USERNAME)</label>
+                        <label>USERNAME</label>
                         <input type="text" id="free-username" placeholder="Username">
                     </div>
                     <div class="input-group">
@@ -205,16 +210,16 @@
                         <input type="date" id="free-dob">
                     </div>
 
-                    <button type="button" onclick="submitFreePlanRequest()" class="btn-cyber btn-glow-blue" style="margin-top: 15px;">SUBMIT FREE ACCESS REQUEST</button>
+                    <button type="button" onclick="submitFreePlanRequest()" class="btn-cyber btn-glow-blue" style="margin-top: 15px;">SUBMIT REQUEST</button>
                     <p id="free-err" class="error-text"></p>
                 </div>
 
                 <div id="free-success-step" class="hidden">
                     <div class="cyber-success-beacon">
-                        <h2 class="txt-green" style="margin: 0 0 10px 0;">✅ REQUEST SUBMITTED</h2>
+                        <h2 class="txt-green" style="margin: 0 0 10px 0;">✅ REQUEST DISPATCHED</h2>
                         <div class="confirmation-notice-box">
                             <p style="margin: 0; font-size: 13px; line-height: 1.6;">
-                                🛡️ Your request for standard access has been routed to Admin. Once approved, you can login directly with your assigned passcode.
+                                🛡️ Node enrollment is in the authorization queue. You can log in once node setup is configured.
                             </p>
                         </div>
                         <button type="button" onclick="hideFreeRequestModal()" class="btn-cyber btn-glow-blue" style="margin-top: 20px;">RETURN TO LOGIN</button>
@@ -223,23 +228,42 @@
             </div>
         </div>
 
+        <!-- USER DASHBOARD SCREEN -->
         <div id="user-screen" class="screen hidden">
             <div class="card header">
                 <h2>👋 USER: <span id="user-display-name" class="txt-green">Agent</span> <span id="user-plan-badge" class="plan-badge" style="vertical-align: middle; margin-left: 8px;">FREE</span></h2>
                 <button type="button" onclick="logout()" class="btn-disconnect">LOGOUT</button>
             </div>
 
+            <!-- SAVINGS VAULT STATS -->
             <div class="stats-container">
                 <div class="card stat-box glow-border-green">
-                    <h3>MY PERSONAL SAVING VAULT</h3>
+                    <h3>TOTAL SAVING</h3>
                     <p class="stat-number txt-green">₹<span id="user-total-savings">0</span></p>
                 </div>
                 <div class="card stat-box glow-border-blue">
-                    <h3>MY TOTAL ENTRIES</h3>
+                    <h3>TOTAL ENTRIES</h3>
                     <p class="stat-number txt-blue-glow"><span id="user-total-entries">0</span></p>
                 </div>
             </div>
+
+            <!-- USER TARGET PROGRESS (VIP / ADMIN CAN SET) -->
+            <div class="card glow-border-pink">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap: wrap; gap: 8px;">
+                    <span style="font-size:12px; font-weight:bold; letter-spacing:1px;">
+                        SAVINGS TARGET (<span id="user-target-display" class="txt-green">₹1,00,000</span>)
+                    </span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <button type="button" id="btn-edit-target" class="btn-table-edit hidden" onclick="promptEditUserTarget()">🎯 SET GOAL</button>
+                        <span id="user-target-percent-txt" class="txt-pink" style="font-weight:bold; font-size:13px;">0%</span>
+                    </div>
+                </div>
+                <div class="progress-track">
+                    <div id="user-target-progress-fill" class="progress-fill"></div>
+                </div>
+            </div>
             
+            <!-- PROFILE CARD -->
             <div class="card glow-border-blue profile-card">
                 <div class="profile-header-flex">
                     <div class="profile-main-meta">
@@ -248,7 +272,9 @@
                         </div>
                         <div class="profile-title-details">
                             <h3 id="profile-card-name" class="txt-blue" style="margin: 0; font-size: 20px;">Operator Name</h3>
-                            <p class="txt-muted" style="margin: 4px 0 0 0; font-size: 13px;">SYSTEM ID: <span id="profile-card-id" class="txt-pink" style="font-weight: bold;">NODE_ID</span></p>
+                            <p class="txt-muted" style="margin: 4px 0 0 0; font-size: 13px;">
+                                SYSTEM ID: <span id="profile-card-id" class="txt-pink" style="font-weight: bold;">NODE_ID</span>
+                            </p>
                         </div>
                     </div>
                     <button type="button" class="btn-table-edit" style="padding: 8px 16px; font-size: 12px;" onclick="toggleEditProfileDeck()">⚙️ EDIT PROFILE</button>
@@ -268,14 +294,19 @@
                         <span id="profile-card-dob" class="detail-value">Not Set</span>
                     </div>
                     <div class="profile-detail-item">
-                        <span class="detail-label">🛡️ NODE STATUS & ROLE</span>
+                        <span class="detail-label">🛡️ STATUS & ROLE</span>
                         <span id="profile-card-role" class="detail-value txt-green">Active Agent</span>
                     </div>
                 </div>
 
                 <div id="edit-profile-deck" class="profile-edit-box hidden">
-                    <h4 class="txt-pink" style="margin-top:0;">UPDATE PERSONAL DATA </h4>
+                    <h4 class="txt-pink" style="margin-top:0;">UPDATE DATA</h4>
                     <div class="admin-form-grid">
+                        <div class="input-group">
+                            <label> SYSTEM ID<small class="txt-muted"> [1Change/7 Days]</small></label>
+                            <input type="text" id="edit-profile-username" placeholder="Unique system id...">
+                            <span id="system-id-cooldown-note" class="txt-muted" style="font-size:10px; margin-top:4px;"></span>
+                        </div>
                         <div class="input-group">
                             <label>FULL NAME</label>
                             <input type="text" id="edit-profile-name" placeholder="Full Name">
@@ -293,7 +324,14 @@
                             <input type="date" id="edit-profile-dob">
                         </div>
                         <div class="input-group">
-                            <label>PROFILE AVATAR (IMAGE)</label>
+                            <label>CHANGE PASSCODE</label>
+                            <div class="password-wrapper">
+                                <input type="password" id="edit-profile-password" placeholder="Leave blank to keep unchanged">
+                                <button type="button" class="btn-toggle-eye" onclick="togglePassVisibility('edit-profile-password', this)">🙈</button>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>PROFILE AVATAR</label>
                             <input type="file" id="edit-profile-file" accept="image/*" onchange="handleImageUpload(event)">
                         </div>
                     </div>
@@ -305,6 +343,7 @@
                 </div>
             </div>
             
+            <!-- SAVING ENTRY MAINBOARD -->
             <div class="card cyber-panel">
                 <h3 class="panel-title">DAILY ATTENDANCE & SAVING INPUT</h3>
                 
@@ -316,9 +355,10 @@
                 <div class="signature-area">
                     <label>✍️ BIOMETRIC SIGNATURE VERIFICATION</label>
                     
-                    <div class="sig-mode-switch">
+                    <!-- DYNAMIC VIP / FREE SWITCHER -->
+                    <div class="sig-mode-switch" id="signature-mode-switch-bar">
                         <button type="button" id="btn-mode-draw" class="btn-mode-tab active" onclick="switchSignatureMode('draw')">✏️ DRAW PAD</button>
-                        <button type="button" id="btn-mode-upload" class="btn-mode-tab" onclick="switchSignatureMode('upload')">📁 UPLOAD IMAGE</button>
+                        <button type="button" id="btn-mode-upload" class="btn-mode-tab" onclick="switchSignatureMode('upload')">📁 UPLOAD IMAGE (VIP)</button>
                     </div>
 
                     <div id="sig-draw-container">
@@ -328,40 +368,42 @@
 
                     <div id="sig-upload-container" class="hidden">
                         <input type="file" id="sig-file-input" accept="image/*" onchange="handleSignatureFileUpload(event)">
-                        <p class="subtitle" style="text-align:left; margin:6px 0;">Clean filter will isolate strokes and wipe paper background automatically.</p>
+                        <p class="subtitle" style="text-align:left; margin:6px 0;">Stroke isolation filter wipes paper backgrounds automatically.</p>
                         <div id="sig-preview-wrapper" class="sig-preview-box hidden">
                             <img id="sig-preview-img" src="" alt="Processed Signature">
                         </div>
                     </div>
                 </div>
 
-                <button type="button" onclick="submitDailyEntry()" class="btn-cyber btn-glow-green" style="margin-top: 25px;">UPLOAD ENTRY </button>
+                <button type="button" onclick="submitDailyEntry()" class="btn-cyber btn-glow-green" style="margin-top: 25px;">UPLOAD ENTRY</button>
                 <p id="user-msg" class="success-text"></p>
             </div>
 
+            <!-- GLOWING ANALYTICS (VIP EXCLUSIVE) -->
             <div id="user-vip-analytics-panel" class="card glow-border-pink hidden" style="margin-top: 20px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                     <div>
                         <h3 class="txt-pink" style="margin: 0;">🚀 VIP ADVANCED SAVINGS ANALYTICS</h3>
                         <p class="subtitle" style="text-align: left; margin: 4px 0 0 0;">Visual progress chart and personal goal tracker.</p>
                     </div>
-                    <button type="button" onclick="downloadUserFilteredData()" class="btn-download">⬇️ DOWNLOAD CSV </button>
+                    <button type="button" onclick="downloadUserFilteredData()" class="btn-download">⬇️ DOWNLOAD CSV</button>
                 </div>
 
-                <div style="margin-top: 20px; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px;">
-                    <canvas id="user-vip-chart" height="110"></canvas>
+                <div class="cyber-chart-wrapper" style="margin-top: 20px;">
+                    <canvas id="user-vip-chart" height="130"></canvas>
                 </div>
             </div>
 
-            <div class="card glow-border-blue" style="margin-top: 20px;">
+            <!-- FILTERS LOGGED ENTRIES (RESTRICTED TO VIP ONLY) -->
+            <div id="user-logged-entries-card" class="card glow-border-blue hidden" style="margin-top: 20px;">
                 <div class="filter-header-flex">
-                    <h3 class="txt-blue" style="margin:0;">📜 FILTERS LOGGED ENTRIES </h3>
+                    <h3 class="txt-blue" style="margin:0;">📜 FILTERS LOGGED ENTRIES</h3>
                     <div class="search-box">
                         <input type="text" id="user-search-input" placeholder="🔍 Search my records..." onkeyup="renderUserLedger()">
                     </div>
                 </div>
 
-                <div id="user-vip-filter-deck" class="filter-grid hidden" style="margin-bottom: 15px;">
+                <div id="user-vip-filter-deck" class="filter-grid" style="margin-bottom: 15px;">
                     <div class="input-group">
                         <label>YEAR</label>
                         <select id="user-filter-year">
@@ -395,11 +437,13 @@
                     </div>
                 </div>
 
+                <!-- ALIGNED COLUMNS (TIMESTAMP, DATE, AMOUNT, STATUS, ACTION) -->
                 <div class="table-container">
                     <table>
                         <thead>
                             <tr>
                                 <th>TIMESTAMP</th>
+                                <th>DATE</th>
                                 <th>AMOUNT</th>
                                 <th>STATUS</th>
                                 <th>ACTION</th>
@@ -411,37 +455,43 @@
             </div>
         </div>
 
-        <!-- ADMIN SCREEN -->
+        <!-- CENTRAL NODE ADMIN SCREEN -->
         <div id="admin-screen" class="screen hidden">
             <div class="card header admin-header">
-                <h2>⚡ CENTRAL NODE ADMIN</h2>
+                <h2>⚡ CYBHACX ADMIN PANEL</h2>
                 <button type="button" onclick="logout()" class="btn-disconnect">LOGOUT</button>
             </div>
 
             <div class="stats-container">
                 <div class="card stat-box glow-border-green">
-                    <h3>CENTRAL POOL AMOUNT</h3>
+                    <h3>USERS TOTAL AMOUNT</h3>
                     <p class="stat-number txt-green">₹<span id="total-pool-money">0</span></p>
                 </div>
                 <div class="card stat-box glow-border-blue">
-                    <h3>SYSTEM TOTAL ENTRIES</h3>
+                    <h3>USERS TOTAL ENTRIES</h3>
                     <p class="stat-number txt-blue-glow"><span id="total-entries-count">0</span></p>
                 </div>
             </div>
 
             <div class="card glow-border-pink">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <span style="font-size:12px; font-weight:bold; letter-spacing:1px;">GRID SAVINGS TARGET (₹1,00,000)</span>
-                    <span id="progress-percent-txt" class="txt-pink" style="font-weight:bold; font-size:13px;">0%</span>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap: wrap; gap: 8px;">
+                    <span style="font-size:12px; font-weight:bold; letter-spacing:1px;">
+                        USERS SAVINGS TARGET (<span id="admin-target-display" class="txt-pink">₹1,00,000</span>)
+                    </span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <button type="button" class="btn-table-edit" onclick="promptAdminSavingsTarget()">🎯 UPDATE TARGET</button>
+                        <span id="progress-percent-txt" class="txt-pink" style="font-weight:bold; font-size:13px;">0%</span>
+                    </div>
                 </div>
                 <div class="progress-track">
                     <div id="target-progress-fill" class="progress-fill"></div>
                 </div>
             </div>
 
+            <!-- MASTER LEDGER MATRIX -->
             <div class="card glow-border-blue">
                 <div class="filter-header-flex">
-                    <h3 class="txt-blue" style="margin: 0;">⚡ MASTER LEDGER MATRIX</h3>
+                    <h3 class="txt-blue" style="margin: 0;">⚡ MASTER LEDGER USERS CHART </h3>
                     <div style="display:flex; gap:8px;">
                         <button type="button" onclick="downloadFilteredData()" class="btn-download">⬇️ CSV EXPORT</button>
                         <button type="button" onclick="resetFilters()" class="btn-reset-filter">RESET</button>
@@ -476,7 +526,7 @@
                         </select>
                     </div>
                     <div class="input-group">
-                        <label>DATE</label>
+                        <label>EXACT DATE</label>
                         <input type="date" id="filter-date" onchange="applyMatrixFilters()">
                     </div>
                 </div>
@@ -485,16 +535,19 @@
                     <input type="text" id="admin-search-input" placeholder="🔍 Search records by ID, amount, timestamp..." onkeyup="applyMatrixFilters()">
                 </div>
 
-                <div style="margin: 15px 0 20px 0; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px;">
-                    <canvas id="admin-master-chart" height="110"></canvas>
+                <!-- STYLISH GLOWING CHART -->
+                <div class="cyber-chart-wrapper" style="margin: 15px 0 20px 0;">
+                    <canvas id="admin-master-chart" height="130"></canvas>
                 </div>
 
+                <!-- ALIGNED COLUMNS (TIMESTAMP, DATE, AMOUNT, STATUS, ACTION) -->
                 <div class="table-container">
                     <table>
                         <thead>
                             <tr>
                                 <th>OPERATOR</th>
                                 <th>TIMESTAMP</th>
+                                <th>DATE</th>
                                 <th>AMOUNT</th>
                                 <th>STATUS</th>
                                 <th>SIGNATURE</th>
@@ -506,9 +559,9 @@
                 </div>
             </div>
 
-            <!-- PROVISION USER PROFILE -->
-            <div class="card glow-border-pink">
-                <h3 class="txt-pink">⚡ PROVISION / UPDATE NODE OPERATOR</h3>
+            <!-- PROVISION & EDIT USER NODE -->
+            <div class="card glow-border-pink" id="admin-user-provision-deck">
+                <h3 class="txt-pink">⚡ CREATE / UPDATE ALL OPERATOR</h3>
                 <div class="admin-form-grid">
                     <div class="input-group">
                         <label>SYSTEM ID (USERNAME)</label>
@@ -531,17 +584,20 @@
                         <input type="date" id="signup-dob">
                     </div>
                     <div class="input-group">
-                        <label>SECURITY ANSWER (FORGET RECOVERY)</label>
-                        <input type="text" id="signup-security" placeholder="Security secret">
+                        <label>SECURITY ANSWER</label>
+                        <input type="text" id="signup-security" placeholder="Security key">
                     </div>
                     <div class="input-group">
                         <label>PASSCODE</label>
-                        <input type="password" id="signup-password" placeholder="Passcode">
+                        <div class="password-wrapper">
+                            <input type="password" id="signup-password" placeholder="Passcode">
+                            <button type="button" class="btn-toggle-eye" onclick="togglePassVisibility('signup-password', this)">🙈</button>
+                        </div>
                     </div>
                     <div class="input-group">
                         <label>ROLE</label>
                         <select id="signup-role">
-                            <option value="user">User Node</option>
+                            <option value="user">User</option>
                             <option value="admin">System Admin</option>
                         </select>
                     </div>
@@ -553,7 +609,7 @@
                         </select>
                     </div>
                     <div class="input-group">
-                        <label>FEATURE LEVEL</label>
+                        <label>PLANS </label>
                         <select id="signup-features-unlocked">
                             <option value="standard">Standard Pass</option>
                             <option value="vip">PRO VIP Pass</option>
@@ -561,7 +617,29 @@
                     </div>
                 </div>
 
-                <div class="input-group" style="margin-top:10px;">
+                <!-- INDIVIDUAL FEATURE TOGGLE MATRIX (ADMIN LEVEL) -->
+                <div class="feature-toggles-container" style="margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
+                    <h4 class="txt-blue" style="margin: 0 0 10px 0;">🛡️ SELECT FEATURES </h4>
+                    <div class="feature-checkboxes-grid">
+                        <label class="cyber-checkbox-label">
+                            <input type="checkbox" id="feat-toggle-drawpad" checked> <span>Draw Pad Access</span>
+                        </label>
+                        <label class="cyber-checkbox-label">
+                            <input type="checkbox" id="feat-toggle-imgupload"> <span>Upload Image Sign</span>
+                        </label>
+                        <label class="cyber-checkbox-label">
+                            <input type="checkbox" id="feat-toggle-charts"> <span>Visual Graphs & Charts</span>
+                        </label>
+                        <label class="cyber-checkbox-label">
+                            <input type="checkbox" id="feat-toggle-table"> <span>Filters Logged Entries</span>
+                        </label>
+                        <label class="cyber-checkbox-label">
+                            <input type="checkbox" id="feat-toggle-customtarget"> <span>Custom Savings Target</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="input-group" style="margin-top:15px;">
                     <label>PROFILE PICTURE</label>
                     <div style="display:flex; align-items:center; gap:12px;">
                         <div class="admin-avatar-preview">
@@ -582,18 +660,18 @@
 
             <!-- REGISTERED USERS LIST -->
             <div class="card glow-border-blue">
-                <h3 class="txt-blue">👥 REGISTERED OPERATOR NODES</h3>
+                <h3 class="txt-blue">👥 REGISTERED USERS LIST</h3>
                 <div class="table-container">
                     <table>
                         <thead>
                             <tr>
                                 <th>AVATAR</th>
-                                <th>NODE ID</th>
+                                <th>SYSTEM ID</th>
                                 <th>NAME</th>
-                                <th>CONTACT MATRIX</th>
+                                <th>CONTACTS</th>
                                 <th>LOCK STATE</th>
-                                <th>TIER</th>
-                                <th>SECURITY KEY</th>
+                                <th>PLAN</th>
+                                <th>FEATURES</th>
                                 <th>ACTIONS</th>
                             </tr>
                         </thead>
@@ -602,14 +680,15 @@
                 </div>
             </div>
 
-            <!-- FREE REQUESTS & PAYMENTS -->
+            <!-- FREE REQUESTS MATRIX -->
             <div class="card glow-border-blue">
-                <h3 class="txt-blue">⚡ PENDING FREE ACCESS APPLICATIONS</h3>
+                <h3 class="txt-blue">⚡ PENDING FREE PASS APPLICATIONS</h3>
                 <div class="table-container">
                     <table>
                         <thead>
                             <tr>
-                                <th>TIME</th>
+                                <th>TIMESTAMP</th>
+                                <th>DATE</th>
                                 <th>REQUEST ID</th>
                                 <th>DETAILS</th>
                                 <th>DOB</th>
@@ -621,13 +700,15 @@
                 </div>
             </div>
 
+            <!-- VIP VERIFICATIONS -->
             <div class="card glow-border-pink">
                 <h3 class="txt-pink">💳 PRO VIP RAZORPAY VERIFICATIONS</h3>
                 <div class="table-container">
                     <table>
                         <thead>
                             <tr>
-                                <th>TIME</th>
+                                <th>TIMESTAMP</th>
+                                <th>DATE</th>
                                 <th>SYSTEM ID</th>
                                 <th>PAYER DETAILS</th>
                                 <th>PAYMENT REF</th>
@@ -640,11 +721,51 @@
                 </div>
             </div>
 
+            <!-- ADMIN LIVE SUPPORT / HELP DESK MONITOR -->
+            <div class="card glow-border-blue" id="admin-support-desk">
+                <h3 class="txt-blue">💬 LIVE SUPPORT & HELP MONITOR</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>TIMESTAMP</th>
+                                <th>DATE</th>
+                                <th>USER</th>
+                                <th>MESSAGE / ISSUE</th>
+                                <th>STATUS</th>
+                                <th>ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-support-tickets-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
 
     </div>
 
-    <!-- Scripts at end of body for instant DOM and script loading -->
+    <!-- HELP & SUPPORT MODAL (LIVE CHAT & TICKETING) -->
+    <div id="support-modal" class="cyber-modal-overlay hidden">
+        <div class="cyber-modal-card glow-border-blue" style="max-width: 520px; display: flex; flex-direction: column; max-height: 85vh;">
+            <div class="modal-header-flex">
+                <h3 class="txt-blue" style="margin:0;">💬 HELP & LIVE SUPPORT</h3>
+                <button type="button" class="btn-modal-close" onclick="toggleSupportModal()">✕</button>
+            </div>
+            <p class="subtitle" style="text-align:left; margin:6px 0 12px 0;">Share an issue or direct message admin.</p>
+            
+            <div id="support-chat-stream" class="chat-stream-box">
+                <!-- Live comments / messages load here -->
+            </div>
+
+            <div class="chat-input-bar">
+                <input type="text" id="support-chat-input" placeholder="Describe the issue or ask for assistance...">
+                <button type="button" onclick="sendSupportMessage()" class="btn-cyber btn-glow-blue" style="width: auto; padding: 10px 18px;">SEND</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>

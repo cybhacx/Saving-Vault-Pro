@@ -29,7 +29,7 @@ let currentSigMode = 'draw';
 let uploadedSignatureBase64 = null;
 let userAnalyticsChart = null;
 let adminMasterChart = null;
-const TARGET_GOAL = 100000;
+let currentAppTargetGoal = 100000;
 
 const DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2300f0ff' viewBox='0 0 16 16'><path d='M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z'/></svg>";
 
@@ -289,50 +289,46 @@ function initCyberParticles() {
     animate();
 }
 
+// MONKEY EYE TOGGLE
 function togglePassVisibility(inputId, btnElement) {
     const input = document.getElementById(inputId);
     if (!input) return;
     if (input.type === 'password') {
         input.type = 'text';
-        btnElement.innerText = '🙈';
+        btnElement.innerText = '🐵';
     } else {
         input.type = 'password';
-        btnElement.innerText = '👁️';
+        btnElement.innerText = '🙈';
     }
 }
 
 // ----------------------------------------------------
-// STRICT INDIAN FORMATTER (DD/MM/YYYY, hh:mm:ss AM/PM)
+// SEPARATE DATE & TIME FORMATTERS
 // ----------------------------------------------------
-function formatIndianDateTime(dateObj) {
+function formatIndianTime(dateObj) {
     if (!dateObj || !(dateObj instanceof Date) || isNaN(dateObj.getTime())) return 'N/A';
-
-    const day = String(dateObj.getDate()).padStart(2, '0');
-    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const year = dateObj.getFullYear();
-
     let hours = dateObj.getHours();
     const minutes = String(dateObj.getMinutes()).padStart(2, '0');
     const seconds = String(dateObj.getSeconds()).padStart(2, '0');
-
     const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12;
-    const formattedHours = String(hours).padStart(2, '0');
-
-    return `${day}/${month}/${year}, ${formattedHours}:${minutes}:${seconds} ${ampm}`;
+    hours = hours % 12 || 12;
+    return `${String(hours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
 }
 
-// ----------------------------------------------------
-// STRICT DATE PARSER (DD/MM/YYYY & ISO SUPPORT)
-// ----------------------------------------------------
+function formatIndianDate(dateObj) {
+    if (!dateObj || !(dateObj instanceof Date) || isNaN(dateObj.getTime())) return 'N/A';
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const year = dateObj.getFullYear();
+    return `${day}/${month}/${year}`;
+}
+
 function parseRecordDate(timestampStr) {
     if (!timestampStr) return null;
     if (timestampStr instanceof Date) return isNaN(timestampStr.getTime()) ? null : timestampStr;
     if (typeof timestampStr === 'number') return new Date(timestampStr);
 
     const cleanStr = String(timestampStr).trim();
-
     if (cleanStr.includes('/') || (cleanStr.includes('-') && cleanStr.indexOf('-') <= 2)) {
         let datePart = cleanStr;
         let timePartRaw = '';
@@ -378,7 +374,7 @@ function parseRecordDate(timestampStr) {
 }
 
 // ----------------------------------------------------
-// USER PROFILE & STATS
+// USER PROFILE & DYNAMIC ROLES SETUP
 // ----------------------------------------------------
 function renderUserProfileData() {
     if (!currentUser) return;
@@ -409,15 +405,84 @@ function renderUserProfileData() {
         planBadge.style.background = isVIP ? 'var(--neon-pink)' : 'var(--neon-blue)';
     }
 
-    const vipAnalyticsPanel = document.getElementById('user-vip-analytics-panel');
-    const vipFilterDeck = document.getElementById('user-vip-filter-deck');
+    // Role-based feature permissions
+    const permissions = getResolvedPermissions(currentUser);
 
-    if (isVIP) {
+    const vipAnalyticsPanel = document.getElementById('user-vip-analytics-panel');
+    const loggedEntriesCard = document.getElementById('user-logged-entries-card');
+    const btnUploadSign = document.getElementById('btn-mode-upload');
+    const btnEditTarget = document.getElementById('btn-edit-target');
+
+    if (permissions.canViewCharts) {
         vipAnalyticsPanel?.classList.remove('hidden');
-        vipFilterDeck?.classList.remove('hidden');
     } else {
         vipAnalyticsPanel?.classList.add('hidden');
-        vipFilterDeck?.classList.add('hidden');
+    }
+
+    if (permissions.canViewTable) {
+        loggedEntriesCard?.classList.remove('hidden');
+    } else {
+        loggedEntriesCard?.classList.add('hidden');
+    }
+
+    if (permissions.canUploadSign) {
+        btnUploadSign?.classList.remove('hidden');
+    } else {
+        btnUploadSign?.classList.add('hidden');
+        switchSignatureMode('draw');
+    }
+
+    if (permissions.canSetCustomTarget) {
+        btnEditTarget?.classList.remove('hidden');
+    } else {
+        btnEditTarget?.classList.add('hidden');
+    }
+
+    updateUserTargetProgressUI();
+}
+
+function getResolvedPermissions(user) {
+    const isVIP = user.unlockedFeatures === 'vip';
+    const custom = user.customFeatureOverrides || {};
+
+    return {
+        canDrawSign: custom.drawpad !== undefined ? custom.drawpad : true,
+        canUploadSign: custom.imgupload !== undefined ? custom.imgupload : isVIP,
+        canViewCharts: custom.charts !== undefined ? custom.charts : isVIP,
+        canViewTable: custom.table !== undefined ? custom.table : isVIP,
+        canSetCustomTarget: custom.customtarget !== undefined ? custom.customtarget : isVIP
+    };
+}
+
+function updateUserTargetProgressUI() {
+    if (!currentUser) return;
+    const target = currentUser.personalTargetGoal || currentAppTargetGoal;
+    const targetDisplay = document.getElementById('user-target-display');
+    const progressFill = document.getElementById('user-target-progress-fill');
+    const percentTxt = document.getElementById('user-target-percent-txt');
+
+    if (targetDisplay) targetDisplay.innerText = `₹${target.toLocaleString('en-IN')}`;
+
+    let personalSavings = 0;
+    currentUserRecordsCache.forEach(r => {
+        personalSavings += (parseFloat(r.amount) || 0);
+    });
+
+    const percent = Math.min(100, Math.round((personalSavings / target) * 100));
+    if (progressFill) progressFill.style.width = percent + "%";
+    if (percentTxt) percentTxt.innerText = percent + "%";
+}
+
+function promptEditUserTarget() {
+    const newGoal = prompt("Set personal savings target goal (₹):", currentUser.personalTargetGoal || 100000);
+    if (newGoal && !isNaN(newGoal) && Number(newGoal) > 0) {
+        const goalNum = parseInt(newGoal, 10);
+        database.ref('users/' + currentUser.username).update({ personalTargetGoal: goalNum }).then(() => {
+            currentUser.personalTargetGoal = goalNum;
+            sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
+            updateUserTargetProgressUI();
+            alert("Goal updated successfully!");
+        });
     }
 }
 
@@ -426,12 +491,28 @@ function toggleEditProfileDeck() {
     if (!deck) return;
     const isHidden = deck.classList.contains('hidden');
     if (isHidden) {
+        document.getElementById('edit-profile-username').value = currentUser.username || '';
         document.getElementById('edit-profile-name').value = currentUser.name || '';
         document.getElementById('edit-profile-email').value = currentUser.email || '';
         document.getElementById('edit-profile-phone').value = currentUser.phone || '';
         document.getElementById('edit-profile-dob').value = currentUser.dob || '';
+        document.getElementById('edit-profile-password').value = '';
         uploadedProfileBase64 = null;
         document.getElementById('profile-save-msg').innerText = '';
+
+        const note = document.getElementById('system-id-cooldown-note');
+        if (note && currentUser.lastUsernameChange) {
+            const lastChange = new Date(currentUser.lastUsernameChange);
+            const daysPassed = (Date.now() - lastChange.getTime()) / (1000 * 3600 * 24);
+            if (daysPassed < 7) {
+                const daysLeft = Math.ceil(7 - daysPassed);
+                note.innerText = `⚠️ System ID is on cooldown. You can change it in ${daysLeft} day(s).`;
+                document.getElementById('edit-profile-username').disabled = true;
+            } else {
+                note.innerText = "✅ System ID can be updated now.";
+                document.getElementById('edit-profile-username').disabled = false;
+            }
+        }
         deck.classList.remove('hidden');
     } else {
         deck.classList.add('hidden');
@@ -463,13 +544,16 @@ function handleAdminImageUpload(e) {
     reader.readAsDataURL(file);
 }
 
+// 7-DAY USERNAME CHECK & ATOMIC MIGRATION
 function saveUserProfileChanges() {
     if (!currentUser || !currentUser.username) return;
 
+    const newUsername = document.getElementById('edit-profile-username').value.trim().toLowerCase();
     const name = document.getElementById('edit-profile-name').value.trim();
     const email = document.getElementById('edit-profile-email').value.trim();
     const phone = document.getElementById('edit-profile-phone').value.trim();
     const dob = document.getElementById('edit-profile-dob').value;
+    const newPassword = document.getElementById('edit-profile-password').value;
     const msg = document.getElementById('profile-save-msg');
 
     if (!name) {
@@ -478,13 +562,51 @@ function saveUserProfileChanges() {
     }
 
     const updates = { name, email, phone, dob };
+    if (newPassword) updates.password = newPassword;
     if (uploadedProfileBase64) updates.profileImg = uploadedProfileBase64;
 
-    database.ref('users/' + currentUser.username).update(updates).then(() => {
+    const oldUsername = currentUser.username;
+
+    // Check if user is requesting a new username
+    if (newUsername && newUsername !== oldUsername) {
+        if (currentUser.lastUsernameChange) {
+            const lastChange = new Date(currentUser.lastUsernameChange);
+            const daysPassed = (Date.now() - lastChange.getTime()) / (1000 * 3600 * 24);
+            if (daysPassed < 7) {
+                alert(`System ID can only be modified once every 7 days! Wait ${Math.ceil(7 - daysPassed)} more day(s).`);
+                return;
+            }
+        }
+
+        // Verify username uniqueness
+        database.ref('users/' + newUsername).once('value').then(snap => {
+            if (snap.exists()) {
+                alert(`System ID [${newUsername}] is already taken! Choose another.`);
+                return;
+            }
+
+            updates.username = newUsername;
+            updates.lastUsernameChange = new Date().toISOString();
+
+            // Atomic node clone and cleanup
+            const migratedData = { ...currentUser, ...updates };
+            database.ref('users/' + newUsername).set(migratedData).then(() => {
+                database.ref('users/' + oldUsername).remove();
+                currentUser = migratedData;
+                sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
+                renderUserProfileData();
+                if (msg) msg.innerText = "🟢 PROFILE & SYSTEM ID UPDATED!";
+                setTimeout(() => { toggleEditProfileDeck(); if (msg) msg.innerText = ""; }, 1200);
+            });
+        });
+        return;
+    }
+
+    database.ref('users/' + oldUsername).update(updates).then(() => {
         currentUser = { ...currentUser, ...updates };
         sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
         renderUserProfileData();
-        if (msg) msg.innerText = "🟢 PROFILE MATRIX UPDATED SUCCESSFULLY!";
+        if (msg) msg.innerText = "🟢 PROFILE UPDATED SUCCESSFULLY!";
         setTimeout(() => {
             toggleEditProfileDeck();
             if (msg) msg.innerText = "";
@@ -498,6 +620,12 @@ function saveUserProfileChanges() {
 // SIGNATURE ENGINE
 // ----------------------------------------------------
 function switchSignatureMode(mode) {
+    const permissions = getResolvedPermissions(currentUser || {});
+    if (mode === 'upload' && !permissions.canUploadSign) {
+        alert("Upload Signature is reserved for PRO VIP Nodes! Upgrade to unlock.");
+        return;
+    }
+
     currentSigMode = mode;
     const drawBtn = document.getElementById('btn-mode-draw');
     const uploadBtn = document.getElementById('btn-mode-upload');
@@ -596,9 +724,6 @@ function clearSignature() {
     if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-// ----------------------------------------------------
-// ACCURATE MONTH INDEX MATCHING (0 = Jan, 8 = Sep, 9 = Oct)
-// ----------------------------------------------------
 function matchMonthIndex(monthValue, dateMonthIndex) {
     if (!monthValue || monthValue === 'ALL' || monthValue === 'All Months') return true;
     const monthNames = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
@@ -615,7 +740,7 @@ function matchMonthIndex(monthValue, dateMonthIndex) {
 }
 
 // ----------------------------------------------------
-// REALTIME LISTENERS & DYNAMIC FILTER POPULATION
+// REALTIME LISTENERS & DYNAMIC POPULATION
 // ----------------------------------------------------
 function listenToLiveDatabase() {
     database.ref('savingRecords').on('value', (snapshot) => {
@@ -636,6 +761,15 @@ function listenToLiveDatabase() {
 
         populateFilterDropdowns(allRecordsCache);
         applyMatrixFilters();
+    });
+
+    database.ref('appConfig/targetGoal').on('value', (snap) => {
+        if (snap.exists()) {
+            currentAppTargetGoal = snap.val();
+            const targetDisp = document.getElementById('admin-target-display');
+            if (targetDisp) targetDisp.innerText = `₹${currentAppTargetGoal.toLocaleString('en-IN')}`;
+            applyMatrixFilters();
+        }
     });
 }
 
@@ -668,7 +802,9 @@ function listenToUserProfiles() {
                     </span>
                 </td>
                 <td><span class="${user.unlockedFeatures === 'vip' ? 'txt-pink' : 'txt-muted'}" style="font-size:12px; font-weight:bold;">${featStatus}</span></td>
-                <td>${user.securityAnswer || 'N/A'}</td>
+                <td style="font-size:10px; line-height:1.4;">
+                    ${renderUserFeatureBadges(user)}
+                </td>
                 <td>
                     <div style="display:flex; gap:6px; flex-wrap:wrap;">
                         <button class="btn-table-edit" onclick="editUserProfile('${uId}')">EDIT</button>
@@ -678,7 +814,7 @@ function listenToUserProfiles() {
                         <button class="btn-table-edit" style="border-color:var(--neon-pink); color:var(--neon-pink);" onclick="toggleUserFeature('${uId}', '${user.unlockedFeatures === 'vip' ? 'standard' : 'vip'}')">
                             ${user.unlockedFeatures === 'vip' ? 'REVOKE VIP' : 'GRANT VIP'}
                         </button>
-                        <button class="btn-table-del" onclick="deleteUserByAdmin('${uId}')">DELETE USER</button>
+                        <button class="btn-table-del" onclick="deleteUserByAdmin('${uId}')">DELETE</button>
                     </div>
                 </td>
             `;
@@ -695,11 +831,13 @@ function listenToUserProfiles() {
             const req = childSnapshot.val();
             const rKey = childSnapshot.key;
             const dateObj = parseRecordDate(req.timestamp);
-            const displayTime = formatIndianDateTime(dateObj);
+            const timeOnly = formatIndianTime(dateObj);
+            const dateOnly = formatIndianDate(dateObj);
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${displayTime}</td>
+                <td>${timeOnly}</td>
+                <td>${dateOnly}</td>
                 <td><span class="txt-blue" style="font-weight:bold;">${req.username || 'N/A'}</span></td>
                 <td style="font-size:11px; line-height:1.4;">
                     👤 ${req.name}<br>
@@ -722,13 +860,14 @@ function listenToUserProfiles() {
 
         snapshot.forEach((childSnapshot) => {
             const req = childSnapshot.val();
-            const rKey = childSnapshot.key;
             const dateObj = parseRecordDate(req.timestamp);
-            const displayTime = formatIndianDateTime(dateObj);
+            const timeOnly = formatIndianTime(dateObj);
+            const dateOnly = formatIndianDate(dateObj);
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${displayTime}</td>
+                <td>${timeOnly}</td>
+                <td>${dateOnly}</td>
                 <td><span class="txt-pink" style="font-weight:bold;">${req.username || 'N/A'}</span></td>
                 <td style="font-size:11px; line-height:1.4;">
                     👤 ${req.name}<br>
@@ -744,6 +883,16 @@ function listenToUserProfiles() {
             tbody.appendChild(tr);
         });
     });
+}
+
+function renderUserFeatureBadges(user) {
+    const p = getResolvedPermissions(user);
+    return `
+        <span>Draw: ${p.canDrawSign ? '🟢' : '🔴'}</span><br>
+        <span>Upload: ${p.canUploadSign ? '🟢' : '🔴'}</span><br>
+        <span>Charts: ${p.canViewCharts ? '🟢' : '🔴'}</span><br>
+        <span>Table: ${p.canViewTable ? '🟢' : '🔴'}</span>
+    `;
 }
 
 function prefillFreeUser(username, name, email, phone, dob, reqKey) {
@@ -789,11 +938,25 @@ function prefillUserProvisioning(username, name, email, phone) {
     if (nInp) nInp.value = name;
     if (eInp) eInp.value = email;
     if (pInp) pInp.value = phone;
-    window.scrollTo({ top: 450, behavior: 'smooth' });
+
+    const deck = document.getElementById('admin-user-provision-deck');
+    if (deck) {
+        deck.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function promptAdminSavingsTarget() {
+    const val = prompt("Update Central Master Grid Target (₹):", currentAppTargetGoal);
+    if (val && !isNaN(val) && Number(val) > 0) {
+        const newGoal = parseInt(val, 10);
+        database.ref('appConfig/targetGoal').set(newGoal).then(() => {
+            alert("Master Target Updated!");
+        });
+    }
 }
 
 // ----------------------------------------------------
-// DYNAMIC DROPDOWNS: POPULATE ACCURATE DATES
+// MASTER LEDGER & GLOWING ANALYTICS
 // ----------------------------------------------------
 function populateFilterDropdowns(records) {
     const userSelect = document.getElementById('filter-user');
@@ -844,7 +1007,6 @@ function applyMatrixFilters() {
         if (selectedUser !== 'ALL' && recordUser !== selectedUser) return false;
 
         const dateObj = parseRecordDate(record.timestamp);
-        
         if ((selectedYear !== 'ALL' || (selectedMonth !== 'ALL' && selectedMonth !== 'All Months') || selectedDate) && !dateObj) {
             return false;
         }
@@ -868,10 +1030,11 @@ function applyMatrixFilters() {
         }
 
         if (searchQuery) {
-            const formattedTime = formatIndianDateTime(dateObj).toLowerCase();
+            const timeStr = formatIndianTime(dateObj).toLowerCase();
+            const dateStr = formatIndianDate(dateObj).toLowerCase();
             const matchesUser = recordUser?.toLowerCase().includes(searchQuery);
             const matchesAmt = String(record.amount).includes(searchQuery);
-            const matchesTime = record.timestamp?.toLowerCase().includes(searchQuery) || formattedTime.includes(searchQuery);
+            const matchesTime = timeStr.includes(searchQuery) || dateStr.includes(searchQuery);
             const matchesStatus = record.status?.toLowerCase().includes(searchQuery);
             if (!matchesUser && !matchesAmt && !matchesTime && !matchesStatus) return false;
         }
@@ -896,12 +1059,12 @@ function renderAdminMasterAnalytics(records) {
     const labels = sorted.map(r => {
         const d = parseRecordDate(r.timestamp);
         const name = r.username || r.userId || 'Agent';
-        return d ? `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()} (${name})` : 'N/A';
+        return d ? `${formatIndianDate(d)} (${name})` : 'N/A';
     });
     const dataPoints = sorted.map(r => parseFloat(r.amount) || 0);
 
     if (adminMasterChart) {
-        adminMasterChart.data.labels = labels.length ? labels : ['No Activity Logged'];
+        adminMasterChart.data.labels = labels.length ? labels : ['No Activity'];
         adminMasterChart.data.datasets[0].data = dataPoints.length ? dataPoints : [0];
         adminMasterChart.update('none');
         return;
@@ -914,15 +1077,18 @@ function renderAdminMasterAnalytics(records) {
     adminMasterChart = new Chart(chartCanvas, {
         type: 'line',
         data: {
-            labels: labels.length ? labels : ['No Activity Logged'],
+            labels: labels.length ? labels : ['No Activity'],
             datasets: [{
                 label: 'Filtered Vault Inflow (₹)',
                 data: dataPoints.length ? dataPoints : [0],
                 borderColor: primaryColor,
                 backgroundColor: isDay ? 'rgba(2, 132, 199, 0.12)' : 'rgba(0, 255, 102, 0.15)',
                 borderWidth: 2,
+                pointBackgroundColor: primaryColor,
+                pointBorderColor: '#ffffff',
+                pointRadius: 4,
                 fill: true,
-                tension: 0.3
+                tension: 0.35
             }]
         },
         options: {
@@ -951,7 +1117,7 @@ function resetFilters() {
 }
 
 // ----------------------------------------------------
-// AUTHENTICATION: FAST DIRECT LOOKUP
+// AUTHENTICATION
 // ----------------------------------------------------
 function showForgetPassword() {
     document.getElementById('login-form-group')?.classList.add('hidden');
@@ -987,7 +1153,6 @@ function handleLogin() {
 
     const lowerUserInp = rawUserInp.toLowerCase();
 
-    // 1. Direct Master Admin Check (Instant)
     if (lowerUserInp === 'cybhacx') {
         if (passInp === 'cybhacx@#Ravi') {
             currentUser = {
@@ -1009,7 +1174,6 @@ function handleLogin() {
 
     if (err) err.innerText = "Connecting to Node...";
 
-    // 2. Direct Node Lookup (No full database scanning lag)
     database.ref('users/' + lowerUserInp).once('value').then((snapshot) => {
         if (snapshot.exists()) {
             const matchedUser = snapshot.val();
@@ -1030,7 +1194,6 @@ function handleLogin() {
                 if (passwordInput) passwordInput.style.borderColor = "#ff3366";
             }
         } else {
-            // Fallback for case variations
             database.ref('users').orderByKey().equalTo(lowerUserInp).once('value').then(fallbackSnap => {
                 if (fallbackSnap.exists()) {
                     let fUser = null;
@@ -1055,17 +1218,13 @@ function handleLogin() {
     });
 }
 
-// ----------------------------------------------------
-// GOOGLE SIGN-IN: ROBUST WITH PROTOCOL CHECK
-// ----------------------------------------------------
 function handleGoogleSignIn() {
     const err = document.getElementById('auth-error');
     if (err) err.innerText = "Opening Google Sign-In...";
 
-    // Security warning if run directly from file system
     if (window.location.protocol === 'file:') {
-        alert("Google Sign-In file:/// path par kaam nahi karta. Kripya VS Code ke 'Live Server' (http://localhost) se run karein.");
-        if (err) err.innerText = "⚠️ Error: Live Server required for Google Auth!";
+        alert("Google Sign-In requires http:// or https:// (Live Server).");
+        if (err) err.innerText = "⚠️ Error: Run via Web Server!";
         return;
     }
 
@@ -1095,7 +1254,6 @@ function handleGoogleSignIn() {
                     profileImg: existingData.profileImg || user.photoURL || DEFAULT_AVATAR
                 };
 
-                // Safe update without overwriting records
                 userRef.update({
                     email: currentUser.email,
                     profileImg: currentUser.profileImg
@@ -1115,7 +1273,8 @@ function handleGoogleSignIn() {
                     unlockedFeatures: 'standard',
                     securityAnswer: 'google_auth',
                     profileImg: user.photoURL || DEFAULT_AVATAR,
-                    createdAt: new Date().toISOString()
+                    createdAt: new Date().toISOString(),
+                    lastUsernameChange: null
                 };
 
                 userRef.set(newUserRecord).then(() => {
@@ -1132,8 +1291,6 @@ function handleGoogleSignIn() {
         if (err) {
             if (error.code === 'auth/popup-closed-by-user') {
                 err.innerText = "⚠️ Google sign-in cancelled by user.";
-            } else if (error.code === 'auth/unauthorized-domain') {
-                err.innerText = "🚨 Error: Domain unauthorized. Add localhost in Firebase Console.";
             } else {
                 err.innerText = "🚨 GOOGLE AUTH ERROR: " + error.message;
             }
@@ -1147,6 +1304,7 @@ function launchAppForUser() {
         document.getElementById('admin-screen')?.classList.remove('hidden');
         listenToLiveDatabase();
         listenToUserProfiles();
+        listenToSupportTicketsAdmin();
     } else {
         document.getElementById('user-screen')?.classList.remove('hidden');
         renderUserProfileData();
@@ -1157,7 +1315,7 @@ function launchAppForUser() {
 }
 
 // ----------------------------------------------------
-// STRICT USER LEDGER & VIP FILTERS
+// USER LEDGER: CORRECT COLUMN SEPARATION
 // ----------------------------------------------------
 function bindUserFilterEvents() {
     const ySel = document.getElementById('user-filter-year');
@@ -1246,7 +1404,8 @@ function renderUserLedger() {
             return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
         });
 
-        if (currentUser.unlockedFeatures === 'vip') {
+        const permissions = getResolvedPermissions(currentUser);
+        if (permissions.canViewTable) {
             populateUserVIPYearDropdown(rawUserRecords);
         }
 
@@ -1255,7 +1414,8 @@ function renderUserLedger() {
         rawUserRecords.forEach(item => {
             const key = item._key;
             const dateObj = parseRecordDate(item.timestamp);
-            const displayTime = formatIndianDateTime(dateObj);
+            const timeOnly = formatIndianTime(dateObj);
+            const dateOnly = formatIndianDate(dateObj);
 
             if ((selectedYear !== 'ALL' || (selectedMonth !== 'ALL' && selectedMonth !== 'All Months') || selectedDate) && !dateObj) {
                 return;
@@ -1280,7 +1440,7 @@ function renderUserLedger() {
             }
 
             if (searchQuery) {
-                const matchTime = item.timestamp?.toLowerCase().includes(searchQuery) || displayTime.toLowerCase().includes(searchQuery);
+                const matchTime = timeOnly.toLowerCase().includes(searchQuery) || dateOnly.toLowerCase().includes(searchQuery);
                 const matchAmt = String(item.amount).includes(searchQuery);
                 if (!matchTime && !matchAmt) return;
             }
@@ -1292,8 +1452,10 @@ function renderUserLedger() {
             const tr = document.createElement('tr');
             const isRequested = item.deleteRequested === true;
 
+            // Columns correctly ordered: TIMESTAMP, DATE, AMOUNT, STATUS, ACTION
             tr.innerHTML = `
-                <td>${displayTime}</td>
+                <td>${timeOnly}</td>
+                <td>${dateOnly}</td>
                 <td class="txt-green" style="font-weight:bold;">₹${(item.amount || 0).toLocaleString('en-IN')}</td>
                 <td><span style="color:${isRequested ? '#ffaa00' : '#00ff66'};">${isRequested ? '// REQ DELETION' : '// SECURED'}</span></td>
                 <td>
@@ -1308,7 +1470,9 @@ function renderUserLedger() {
         if (userTotalSavingsText) userTotalSavingsText.innerText = personalTotalAmount.toLocaleString('en-IN');
         if (userTotalEntriesText) userTotalEntriesText.innerText = personalTotalCount;
 
-        if (currentUser.unlockedFeatures === 'vip') {
+        updateUserTargetProgressUI();
+
+        if (permissions.canViewCharts) {
             renderUserVIPAnalytics(currentUserRecordsCache);
         }
     });
@@ -1326,7 +1490,7 @@ function renderUserVIPAnalytics(records) {
 
     const labels = sorted.map(r => {
         const d = parseRecordDate(r.timestamp);
-        return d ? `${d.getDate()}/${d.getMonth()+1}` : 'N/A';
+        return d ? formatIndianDate(d) : 'N/A';
     });
     const dataPoints = sorted.map(r => parseFloat(r.amount) || 0);
 
@@ -1351,12 +1515,16 @@ function renderUserVIPAnalytics(records) {
                 borderColor: primaryColor,
                 backgroundColor: isDay ? 'rgba(217, 4, 102, 0.1)' : 'rgba(0, 240, 255, 0.15)',
                 borderWidth: 2,
+                pointBackgroundColor: primaryColor,
+                pointBorderColor: '#ffffff',
+                pointRadius: 4,
                 fill: true,
-                tension: 0.3
+                tension: 0.35
             }]
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             animation: false,
             scales: {
                 x: { grid: { color: gridColor }, ticks: { color: isDay ? '#374151' : '#a1a1aa' } },
@@ -1389,13 +1557,13 @@ function downloadUserFilteredData() {
     }
 
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Timestamp,Amount,Status\r\n";
+    csvContent += "Time,Date,Amount,Status\r\n";
 
     currentUserRecordsCache.forEach(r => {
         const dateObj = parseRecordDate(r.timestamp);
-        const displayTime = formatIndianDateTime(dateObj);
         const row = [
-            `"${displayTime}"`,
+            `"${formatIndianTime(dateObj)}"`,
+            `"${formatIndianDate(dateObj)}"`,
             r.amount || 0,
             `"${r.status || 'SECURED'}"`
         ];
@@ -1412,7 +1580,7 @@ function downloadUserFilteredData() {
 }
 
 // ----------------------------------------------------
-// ADMIN ACTIONS
+// ADMIN ACTIONS & GRANULAR FEATURE PROVISIONING
 // ----------------------------------------------------
 function deleteRecordByAdmin(key) {
     if (confirm("⚠️ Permanently delete this entry?")) {
@@ -1435,7 +1603,7 @@ function deleteRecordByAdmin(key) {
 }
 
 function handleAdminCreateUser() {
-    const username = document.getElementById('signup-username')?.value.trim();
+    const username = document.getElementById('signup-username')?.value.trim().toLowerCase();
     const name = document.getElementById('signup-name')?.value.trim();
     const email = document.getElementById('signup-email')?.value.trim();
     const phone = document.getElementById('signup-phone')?.value.trim();
@@ -1456,6 +1624,15 @@ function handleAdminCreateUser() {
         return;
     }
 
+    // Granular toggle settings
+    const customFeatureOverrides = {
+        drawpad: document.getElementById('feat-toggle-drawpad').checked,
+        imgupload: document.getElementById('feat-toggle-imgupload').checked,
+        charts: document.getElementById('feat-toggle-charts').checked,
+        table: document.getElementById('feat-toggle-table').checked,
+        customtarget: document.getElementById('feat-toggle-customtarget').checked
+    };
+
     const payload = {
         name,
         email,
@@ -1464,7 +1641,8 @@ function handleAdminCreateUser() {
         role,
         isLocked,
         unlockedFeatures: features,
-        securityAnswer: security
+        securityAnswer: security,
+        customFeatureOverrides
     };
     if (password) payload.password = password;
     if (adminUploadedProfileBase64) payload.profileImg = adminUploadedProfileBase64;
@@ -1475,6 +1653,7 @@ function handleAdminCreateUser() {
     });
 }
 
+// EDIT USER PROFILE & PRELOAD FEATURE CHECKBOXES
 function editUserProfile(username) {
     database.ref('users/' + username).once('value').then(snapshot => {
         if (!snapshot.exists()) return;
@@ -1495,6 +1674,14 @@ function editUserProfile(username) {
         const featSel = document.getElementById('signup-features-unlocked');
         if (featSel) featSel.value = user.unlockedFeatures || "standard";
 
+        // Load custom overrides or fall back to tier defaults
+        const perms = getResolvedPermissions(user);
+        document.getElementById('feat-toggle-drawpad').checked = perms.canDrawSign;
+        document.getElementById('feat-toggle-imgupload').checked = perms.canUploadSign;
+        document.getElementById('feat-toggle-charts').checked = perms.canViewCharts;
+        document.getElementById('feat-toggle-table').checked = perms.canViewTable;
+        document.getElementById('feat-toggle-customtarget').checked = perms.canSetCustomTarget;
+
         const previewImg = document.getElementById('admin-preview-img');
         const placeholder = document.getElementById('admin-preview-placeholder');
 
@@ -1510,7 +1697,10 @@ function editUserProfile(username) {
             placeholder?.classList.remove('hidden');
         }
 
-        window.scrollTo({ top: 300, behavior: 'smooth' });
+        const deck = document.getElementById('admin-user-provision-deck');
+        if (deck) {
+            deck.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
     });
 }
 
@@ -1528,6 +1718,12 @@ function clearProfileForm() {
     
     const featSel = document.getElementById('signup-features-unlocked');
     if (featSel) featSel.value = "standard";
+
+    document.getElementById('feat-toggle-drawpad').checked = true;
+    document.getElementById('feat-toggle-imgupload').checked = false;
+    document.getElementById('feat-toggle-charts').checked = false;
+    document.getElementById('feat-toggle-table').checked = false;
+    document.getElementById('feat-toggle-customtarget').checked = false;
     
     adminUploadedProfileBase64 = null;
     const fileInp = document.getElementById('signup-profile-file');
@@ -1545,15 +1741,15 @@ function downloadFilteredData() {
     }
 
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Operator_ID,Operator_Name,Timestamp,Amount,Status,Delete_Requested\r\n";
+    csvContent += "Operator_ID,Operator_Name,Time,Date,Amount,Status,Delete_Requested\r\n";
 
     currentFilteredRecords.forEach(r => {
         const dateObj = parseRecordDate(r.timestamp);
-        const displayTime = formatIndianDateTime(dateObj);
         const row = [
             `"${r.userId || ''}"`,
             `"${r.username || ''}"`,
-            `"${displayTime}"`,
+            `"${formatIndianTime(dateObj)}"`,
+            `"${formatIndianDate(dateObj)}"`,
             r.amount || 0,
             `"${r.status || 'SECURED'}"`,
             r.deleteRequested ? "YES" : "NO"
@@ -1606,7 +1802,7 @@ function handleForgetPassword() {
 }
 
 // ----------------------------------------------------
-// DAILY ENTRY SUBMISSION (DUAL ATOMIC WRITE AUTO SYNC)
+// DAILY ENTRY SUBMISSION
 // ----------------------------------------------------
 function submitDailyEntry() {
     const amount = document.getElementById('saving-amount')?.value;
@@ -1618,7 +1814,6 @@ function submitDailyEntry() {
     }
 
     let finalSignature = null;
-
     if (currentSigMode === 'draw') {
         finalSignature = canvas.toDataURL();
     } else {
@@ -1661,7 +1856,7 @@ function submitDailyEntry() {
 }
 
 // ----------------------------------------------------
-// ADMIN DASHBOARD RENDERING
+// ADMIN DASHBOARD RENDERING: ALIGNED COLUMNS
 // ----------------------------------------------------
 function renderAdminDashboard(records) {
     const tbody = document.getElementById('records-body');
@@ -1679,11 +1874,12 @@ function renderAdminDashboard(records) {
         const row = document.createElement('tr');
         const isDeleteReq = record.deleteRequested === true;
         const dateObj = parseRecordDate(record.timestamp);
-        const displayTime = formatIndianDateTime(dateObj);
 
+        // Columns correctly ordered: OPERATOR, TIMESTAMP, DATE, AMOUNT, STATUS, SIGNATURE, ACTION
         row.innerHTML = `
             <td><b>${record.username || record.userId || 'N/A'}</b></td>
-            <td>${displayTime}</td>
+            <td>${formatIndianTime(dateObj)}</td>
+            <td>${formatIndianDate(dateObj)}</td>
             <td class="txt-blue" style="font-weight:bold;">₹${(record.amount || 0).toLocaleString('en-IN')}</td>
             <td><span style="color:${isDeleteReq ? '#ffaa00' : '#00ff66'};">// ${isDeleteReq ? 'REQ DELETION' : (record.status || 'SECURED')}</span></td>
             <td>${record.signature ? `<img src="${record.signature}" class="sig-img" alt="signature"/>` : '<span style="color:#6b7280;">NO SIGN</span>'}</td>
@@ -1697,13 +1893,110 @@ function renderAdminDashboard(records) {
     if (totalMoneyText) totalMoneyText.innerText = totalMoney.toLocaleString('en-IN');
     if (totalEntriesText) totalEntriesText.innerText = records.length;
 
-    const percent = Math.min(100, Math.round((totalMoney / TARGET_GOAL) * 100));
+    const percent = Math.min(100, Math.round((totalMoney / currentAppTargetGoal) * 100));
     if (progressFill) progressFill.style.width = percent + "%";
     if (progressTxt) progressTxt.innerText = percent + "%";
 }
 
 // ----------------------------------------------------
-// LOGOUT (ISOLATED SESSION TERMINATION)
+// HELP & SUPPORT LIVE CHAT & TICKETING
+// ----------------------------------------------------
+function toggleSupportModal() {
+    const modal = document.getElementById('support-modal');
+    if (!modal) return;
+    const isHidden = modal.classList.contains('hidden');
+    if (isHidden) {
+        modal.classList.remove('hidden');
+        listenToLiveSupportMessages();
+    } else {
+        modal.classList.add('hidden');
+    }
+}
+
+function listenToLiveSupportMessages() {
+    const chatStream = document.getElementById('support-chat-stream');
+    if (!chatStream) return;
+
+    database.ref('supportTickets').limitToLast(40).on('value', (snapshot) => {
+        chatStream.innerHTML = "";
+        snapshot.forEach((child) => {
+            const msg = child.val();
+            const isSelf = currentUser && (msg.username === currentUser.username || (currentUser.role === 'admin' && msg.senderRole === 'admin'));
+
+            const bubble = document.createElement('div');
+            bubble.className = `chat-bubble ${isSelf ? 'msg-self' : 'msg-peer'}`;
+            
+            const dateObj = parseRecordDate(msg.timestamp);
+            const timeFormatted = `${formatIndianTime(dateObj)} | ${formatIndianDate(dateObj)}`;
+
+            bubble.innerHTML = `
+                <span class="chat-meta">${msg.username || 'Agent'} [${msg.senderRole || 'user'}] - ${timeFormatted}</span>
+                <span>${msg.text}</span>
+            `;
+            chatStream.appendChild(bubble);
+        });
+        chatStream.scrollTop = chatStream.scrollHeight;
+    });
+}
+
+function sendSupportMessage() {
+    const input = document.getElementById('support-chat-input');
+    const text = input?.value.trim();
+    if (!text || !currentUser) return;
+
+    const payload = {
+        username: currentUser.username,
+        name: currentUser.name || currentUser.username,
+        senderRole: currentUser.role || 'user',
+        text: text,
+        timestamp: new Date().toISOString(),
+        status: 'OPEN'
+    };
+
+    database.ref('supportTickets').push(payload).then(() => {
+        if (input) input.value = "";
+    });
+}
+
+function listenToSupportTicketsAdmin() {
+    const tbody = document.getElementById('admin-support-tickets-body');
+    if (!tbody) return;
+
+    database.ref('supportTickets').on('value', (snapshot) => {
+        tbody.innerHTML = "";
+        snapshot.forEach((child) => {
+            const ticket = child.val();
+            const tKey = child.key;
+            const dateObj = parseRecordDate(ticket.timestamp);
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${formatIndianTime(dateObj)}</td>
+                <td>${formatIndianDate(dateObj)}</td>
+                <td><b class="txt-pink">${ticket.username}</b></td>
+                <td>${ticket.text}</td>
+                <td><span style="color:${ticket.status === 'RESOLVED' ? '#00ff66' : '#ffaa00'}; font-weight:bold;">${ticket.status || 'OPEN'}</span></td>
+                <td>
+                    <button class="btn-table-edit" onclick="replySupportTicket('${ticket.username}')">CHAT</button>
+                    <button class="btn-table-del" onclick="database.ref('supportTickets/${tKey}').remove()">DISMISS</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    });
+}
+
+function replySupportTicket(username) {
+    toggleSupportModal();
+    const input = document.getElementById('support-chat-input');
+    if (input) {
+        input.value = `@${username}: `;
+        input.focus();
+    }
+}
+
+// ----------------------------------------------------
+// LOGOUT
 // ----------------------------------------------------
 function logout() {
     currentUser = null;
@@ -1791,6 +2084,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 handleLogin();
+            }
+        });
+    }
+
+    const supportInput = document.getElementById('support-chat-input');
+    if (supportInput) {
+        supportInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                sendSupportMessage();
             }
         });
     }
