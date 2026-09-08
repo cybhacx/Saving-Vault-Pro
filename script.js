@@ -30,14 +30,25 @@ let uploadedSignatureBase64 = null;
 let userAnalyticsChart = null;
 let adminMasterChart = null;
 let currentAppTargetGoal = 100000;
-let phoneConfirmationResult = null;
-let phoneRecaptchaVerifier = null;
 
 const DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2300f0ff' viewBox='0 0 16 16'><path d='M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z'/></svg>";
 
 const canvas = document.getElementById('sig-canvas');
 const ctx = canvas?.getContext('2d');
 let drawing = false;
+
+// ----------------------------------------------------
+// UI STATUS & ERROR HELPERS (INLINE NOTIFICATIONS)
+// ----------------------------------------------------
+function setAuthMessage(msg, isSuccess = false) {
+    const errEl = document.getElementById('auth-error');
+    if (!errEl) return;
+    errEl.innerText = msg || "";
+    errEl.style.color = isSuccess ? "#00ff66" : "#ff3366";
+    errEl.style.fontWeight = "bold";
+    errEl.style.textAlign = "center";
+    errEl.style.margin = "10px 0";
+}
 
 // ----------------------------------------------------
 // THEME SWITCHER
@@ -96,8 +107,7 @@ function switchLoginTab(tabName) {
     const secEmail = document.getElementById('login-section-email');
     const secPhone = document.getElementById('login-section-phone');
 
-    const err = document.getElementById('auth-error');
-    if (err) err.innerText = "";
+    setAuthMessage("");
 
     tabSystem?.classList.remove('active');
     tabEmail?.classList.remove('active');
@@ -116,32 +126,25 @@ function switchLoginTab(tabName) {
     } else if (tabName === 'phone') {
         tabPhone?.classList.add('active');
         secPhone?.classList.remove('hidden');
-        initRecaptcha();
+        setupPhonePasswordField();
     }
 }
 
-function initRecaptcha() {
-    if (!phoneRecaptchaVerifier && document.getElementById('recaptcha-container')) {
-        try {
-            phoneRecaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-                size: 'normal',
-                callback: function() {},
-                'expired-callback': function() {
-                    const err = document.getElementById('auth-error');
-                    if (err) err.innerText = "reCAPTCHA expired. Please verify again.";
-                }
-            });
-            phoneRecaptchaVerifier.render();
-        } catch (e) {
-            console.error("reCAPTCHA init error:", e);
-        }
+// Transform Phone OTP layout to direct Password login (Zero Cost)
+function setupPhonePasswordField() {
+    const otpBox = document.getElementById('phone-otp-box');
+    if (otpBox) otpBox.classList.add('hidden');
+    const sendOtpBtn = document.getElementById('btn-send-phone-otp') || document.querySelector('#login-section-phone button');
+    if (sendOtpBtn) {
+        sendOtpBtn.innerText = "LOGIN WITH PHONE";
+        sendOtpBtn.onclick = handlePhonePasswordLogin;
     }
 }
 
 // ----------------------------------------------------
-// UNIFIED ACCOUNT RESOLVER (DATA DEDUPLICATION & SYNC)
+// UNIFIED ACCOUNT RESOLVER (DATA SYNC ACROSS ALL METHODS)
 // ----------------------------------------------------
-async function findExistingUserNode({ email, phone, username }) {
+async function findExistingUserNode({ email, phone, username, anyIdentifier }) {
     const snap = await database.ref('users').once('value');
     if (!snap.exists()) return null;
 
@@ -151,6 +154,9 @@ async function findExistingUserNode({ email, phone, username }) {
     const normEmail = email ? email.trim().toLowerCase() : null;
     const cleanPhone = phone ? phone.replace(/[^0-9]/g, '').slice(-10) : null;
     const normUsername = username ? username.trim().toLowerCase() : null;
+
+    let searchVal = anyIdentifier ? anyIdentifier.trim().toLowerCase() : null;
+    let searchPhone = anyIdentifier ? anyIdentifier.replace(/[^0-9]/g, '').slice(-10) : null;
 
     snap.forEach(child => {
         const u = child.val();
@@ -173,6 +179,18 @@ async function findExistingUserNode({ email, phone, username }) {
             matchedUser = u;
             matchedKey = child.key;
             return true;
+        }
+        if (searchVal) {
+            if (k === searchVal || (uEmail && uEmail === searchVal)) {
+                matchedUser = u;
+                matchedKey = child.key;
+                return true;
+            }
+            if (searchPhone && searchPhone.length === 10 && uPhone === searchPhone) {
+                matchedUser = u;
+                matchedKey = child.key;
+                return true;
+            }
         }
     });
 
@@ -1213,36 +1231,33 @@ function resetFilters() {
 }
 
 // ----------------------------------------------------
-// AUTHENTICATION: 4 UNIFIED METHODS
+// AUTHENTICATION: DIRECT SYNCED METHODS
 // ----------------------------------------------------
 function showForgetPassword() {
     document.getElementById('login-form-group')?.classList.add('hidden');
     document.getElementById('forget-form-group')?.classList.remove('hidden');
-    const err = document.getElementById('auth-error');
-    if (err) err.innerText = "";
+    setAuthMessage("");
 }
 
 function hideForgetPassword() {
     document.getElementById('forget-form-group')?.classList.add('hidden');
     document.getElementById('login-form-group')?.classList.remove('hidden');
-    const err = document.getElementById('auth-error');
-    if (err) err.innerText = "";
+    setAuthMessage("");
 }
 
-// 1. SYSTEM ID / USERNAME LOGIN
+// 1. SYSTEM ID LOGIN
 function handleLogin() {
     const rawUserInp = document.getElementById('login-username')?.value.trim();
     const passInp = document.getElementById('login-password')?.value;
-    const err = document.getElementById('auth-error');
     const usernameInput = document.getElementById('login-username');
     const passwordInput = document.getElementById('login-password');
 
     if (usernameInput) usernameInput.style.borderColor = "";
     if (passwordInput) passwordInput.style.borderColor = "";
-    if (err) err.innerText = "";
+    setAuthMessage("");
 
     if (!rawUserInp || !passInp) {
-        if (err) err.innerText = "🚨 ACCESS DENIED: Please enter Username and Passcode!";
+        setAuthMessage("🚨 ACCESS DENIED: Please enter System ID and Passcode!");
         if (usernameInput && !rawUserInp) usernameInput.style.borderColor = "#ff3366";
         if (passwordInput && !passInp) passwordInput.style.borderColor = "#ff3366";
         return;
@@ -1259,238 +1274,139 @@ function handleLogin() {
                 username: "cybhacx"
             };
             sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
-            if (err) err.innerText = "";
             launchAppForUser();
             return;
         } else {
-            if (err) err.innerText = "🚨 ACCESS DENIED: Invalid Admin Passcode!";
+            setAuthMessage("🚨 ACCESS DENIED: Invalid Admin Passcode!");
             if (passwordInput) passwordInput.style.borderColor = "#ff3366";
             return;
         }
     }
 
-    if (err) err.innerText = "Connecting to Node...";
+    setAuthMessage("Connecting to System Node...");
 
-    database.ref('users/' + lowerUserInp).once('value').then((snapshot) => {
-        if (snapshot.exists()) {
-            const matchedUser = snapshot.val();
-
+    findExistingUserNode({ username: lowerUserInp }).then((matchedUser) => {
+        if (matchedUser) {
             if (matchedUser.isLocked === true || matchedUser.isLocked === "true") {
-                if (err) err.innerText = "🔒 ACCESS LOCKED: Your Node has been restricted by Admin!";
+                setAuthMessage("🔒 ACCESS LOCKED: Your Node has been restricted by Admin!");
                 return;
             }
 
             if (String(matchedUser.password).trim() === String(passInp).trim()) {
                 currentUser = matchedUser;
-                currentUser.username = lowerUserInp;
-                if (err) err.innerText = "";
+                setAuthMessage("");
                 sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
                 launchAppForUser();
             } else {
-                if (err) err.innerText = "🚨 ACCESS DENIED: Incorrect Passcode entered!";
+                setAuthMessage("🚨 ACCESS DENIED: Incorrect Passcode entered!");
                 if (passwordInput) passwordInput.style.borderColor = "#ff3366";
             }
         } else {
-            database.ref('users').orderByKey().equalTo(lowerUserInp).once('value').then(fallbackSnap => {
-                if (fallbackSnap.exists()) {
-                    let fUser = null;
-                    let fKey = null;
-                    fallbackSnap.forEach(ch => { fUser = ch.val(); fKey = ch.key; });
-                    if (String(fUser.password).trim() === String(passInp).trim()) {
-                        currentUser = fUser;
-                        currentUser.username = fKey;
-                        sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
-                        launchAppForUser();
-                        return;
-                    }
-                }
-                if (err) err.innerText = "🚨 ACCESS DENIED: System ID [" + rawUserInp + "] not registered!";
-                if (usernameInput) usernameInput.style.borderColor = "#ff3366";
-            }).catch(() => {
-                if (err) err.innerText = "🚨 ACCESS DENIED: System ID [" + rawUserInp + "] not registered!";
-            });
+            setAuthMessage("🚨 ACCESS DENIED: System ID [" + rawUserInp + "] not registered!");
+            if (usernameInput) usernameInput.style.borderColor = "#ff3366";
         }
     }).catch(e => {
-        if (err) err.innerText = "🚨 FAULT: Database connection error (" + e.message + ")";
+        setAuthMessage("🚨 FAULT: Database connection error (" + e.message + ")");
     });
 }
 
-// 2. EMAIL & PASSWORD LOGIN (INSTANT SYNC & RETENTION)
+// 2. EMAIL & PASSWORD LOGIN (LINKED TO USER PROFILE)
 async function handleEmailPasswordLogin() {
     const email = document.getElementById('login-email')?.value.trim();
     const pass = document.getElementById('login-email-password')?.value;
-    const err = document.getElementById('auth-error');
 
     if (!email || !pass) {
-        if (err) err.innerText = "🚨 ACCESS DENIED: Email and Passcode required!";
+        setAuthMessage("🚨 ACCESS DENIED: Email and Passcode required!");
         return;
     }
 
-    if (err) err.innerText = "Connecting to Node...";
+    setAuthMessage("Locating Linked Node...");
 
     try {
         const matched = await findExistingUserNode({ email });
         if (matched) {
             if (matched.isLocked === true || matched.isLocked === "true") {
-                if (err) err.innerText = "🔒 ACCESS LOCKED: Your Node has been restricted by Admin!";
+                setAuthMessage("🔒 ACCESS LOCKED: Your Node has been restricted by Admin!");
                 return;
             }
             if (String(matched.password).trim() === String(pass).trim()) {
                 currentUser = matched;
                 sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
-                if (err) err.innerText = "";
+                setAuthMessage("");
                 launchAppForUser();
                 return;
             } else {
-                if (err) err.innerText = "🚨 ACCESS DENIED: Invalid Passcode for this account!";
+                setAuthMessage("🚨 ACCESS DENIED: Invalid Passcode for this account!");
                 return;
             }
         }
 
-        // Direct Registration & Login without verification lag
-        let authUser = null;
-        try {
-            const userCred = await auth.signInWithEmailAndPassword(email, pass);
-            authUser = userCred.user;
-        } catch (signInErr) {
-            if (signInErr.code === 'auth/user-not-found') {
-                const newCred = await auth.createUserWithEmailAndPassword(email, pass);
-                authUser = newCred.user;
-            } else {
-                throw signInErr;
-            }
-        }
-
-        let cleanUsername = authUser.email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
-
-        currentUser = {
-            name: authUser.displayName || cleanUsername,
-            email: authUser.email,
-            phone: 'Not Set',
-            dob: 'Not Set',
-            role: 'user',
-            password: pass,
-            isLocked: false,
-            unlockedFeatures: 'standard',
-            securityAnswer: 'email_node',
-            profileImg: DEFAULT_AVATAR,
-            createdAt: new Date().toISOString(),
-            username: cleanUsername
-        };
-
-        await database.ref('users/' + cleanUsername).set(currentUser);
-        sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
-        if (err) err.innerText = "";
-        launchAppForUser();
+        // Account does not exist
+        setAuthMessage("🚨 ACCESS DENIED: No account linked to this Email. Get Pass first!");
     } catch (e) {
-        if (err) err.innerText = "🚨 AUTH ERROR: " + e.message;
+        setAuthMessage("🚨 AUTH ERROR: " + e.message);
     }
 }
 
-// 3. PHONE NUMBER OTP LOGIN (INDIAN +91 AUTOMATION)
-async function handleSendPhoneOTP() {
+// 3. PHONE NUMBER & PASSWORD LOGIN (ZERO COST - NO OTP REQUIRED)
+async function handlePhonePasswordLogin() {
     let phoneNum = document.getElementById('login-phone')?.value.trim();
-    const err = document.getElementById('auth-error');
+    let passInp = document.getElementById('login-phone-password')?.value || document.getElementById('login-password')?.value;
 
     if (!phoneNum) {
-        if (err) err.innerText = "🚨 Please enter a valid mobile number!";
+        setAuthMessage("🚨 Please enter your registered mobile number!");
         return;
     }
 
-    const digitsOnly = phoneNum.replace(/[^0-9]/g, '');
-    const clean10 = digitsOnly.slice(-10);
-
-    if (clean10.length !== 10) {
-        if (err) err.innerText = "🚨 Invalid Phone: Please enter a 10-digit Indian number!";
+    const digitsOnly = phoneNum.replace(/[^0-9]/g, '').slice(-10);
+    if (digitsOnly.length !== 10) {
+        setAuthMessage("🚨 Invalid Phone: Enter 10-digit Indian number!");
         return;
     }
 
-    const normalizedPhone = '+91' + clean10;
-
-    initRecaptcha();
-    if (err) err.innerText = "Dispatching OTP to " + normalizedPhone + "...";
-
-    try {
-        phoneConfirmationResult = await auth.signInWithPhoneNumber(normalizedPhone, phoneRecaptchaVerifier);
-        document.getElementById('phone-otp-box')?.classList.remove('hidden');
-        if (err) err.innerText = "🟢 OTP dispatched! Enter the 6-digit code below.";
-    } catch (error) {
-        if (err) err.innerText = "🚨 SMS Dispatch Fault: " + error.message;
-        if (window.grecaptcha && phoneRecaptchaVerifier) {
-            phoneRecaptchaVerifier.render().then(widgetId => grecaptcha.reset(widgetId));
-        }
-    }
-}
-
-async function handleVerifyPhoneOTP() {
-    const otpCode = document.getElementById('login-otp')?.value.trim();
-    const phoneNum = document.getElementById('login-phone')?.value.trim();
-    const err = document.getElementById('auth-error');
-
-    if (!otpCode || otpCode.length < 6) {
-        if (err) err.innerText = "🚨 Please enter the complete 6-digit OTP code!";
-        return;
-    }
-    if (!phoneConfirmationResult) {
-        if (err) err.innerText = "🚨 Please request an OTP code first.";
-        return;
-    }
-
-    if (err) err.innerText = "Validating OTP...";
-
-    try {
-        const result = await phoneConfirmationResult.confirm(otpCode);
-        const user = result.user;
-        const phone = user.phoneNumber || ('+91' + phoneNum.replace(/[^0-9]/g, '').slice(-10));
-
-        const matched = await findExistingUserNode({ phone });
-        if (matched) {
-            if (matched.isLocked === true || matched.isLocked === "true") {
-                if (err) err.innerText = "🔒 ACCESS LOCKED: Your Node has been restricted by Admin!";
-                auth.signOut();
-                return;
-            }
-            currentUser = matched;
-            sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
-            if (err) err.innerText = "";
-            launchAppForUser();
+    if (!passInp) {
+        passInp = prompt("Enter your Account Passcode/Password:");
+        if (!passInp) {
+            setAuthMessage("🚨 Passcode is required to login via phone!");
             return;
         }
+    }
 
-        const cleanUsername = 'ph_' + phone.replace(/[^0-9]/g, '').slice(-10);
-        const newUserRecord = {
-            name: 'User ' + phone.slice(-4),
-            email: 'Not Set',
-            phone: phone,
-            dob: 'Not Set',
-            role: 'user',
-            isLocked: false,
-            unlockedFeatures: 'standard',
-            securityAnswer: 'phone_otp',
-            profileImg: DEFAULT_AVATAR,
-            createdAt: new Date().toISOString(),
-            lastUsernameChange: null,
-            username: cleanUsername
-        };
+    setAuthMessage("Authenticating Mobile Node...");
 
-        await database.ref('users/' + cleanUsername).set(newUserRecord);
-        currentUser = newUserRecord;
-        sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
-        if (err) err.innerText = "";
-        launchAppForUser();
+    try {
+        const matched = await findExistingUserNode({ phone: digitsOnly });
+        if (matched) {
+            if (matched.isLocked === true || matched.isLocked === "true") {
+                setAuthMessage("🔒 ACCESS LOCKED: Your Node has been restricted by Admin!");
+                return;
+            }
+
+            if (String(matched.password).trim() === String(passInp).trim()) {
+                currentUser = matched;
+                sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
+                setAuthMessage("");
+                launchAppForUser();
+                return;
+            } else {
+                setAuthMessage("🚨 ACCESS DENIED: Incorrect Passcode for this mobile number!");
+                return;
+            }
+        } else {
+            setAuthMessage("🚨 Mobile Number not registered with any profile!");
+        }
     } catch (e) {
-        if (err) err.innerText = "🚨 OTP Verification Error: " + e.message;
+        setAuthMessage("🚨 ERROR: " + e.message);
     }
 }
 
-// 4. GOOGLE SIGN-IN (INSTANT UNIFIED SYNC)
+// 4. GOOGLE SIGN-IN (UNIFIED SYNC)
 async function handleGoogleSignIn() {
-    const err = document.getElementById('auth-error');
-    if (err) err.innerText = "Connecting Google Node...";
+    setAuthMessage("Connecting Google Node...");
 
     if (window.location.protocol === 'file:') {
         alert("Google Sign-In requires http:// or https:// protocol (Live Server).");
-        if (err) err.innerText = "⚠️ Error: Run via Web Server!";
+        setAuthMessage("⚠️ Error: Run via Web Server!");
         return;
     }
 
@@ -1503,7 +1419,7 @@ async function handleGoogleSignIn() {
 
         if (matched) {
             if (matched.isLocked === true || matched.isLocked === "true") {
-                if (err) err.innerText = "🔒 ACCESS LOCKED: Your Node has been restricted by Admin!";
+                setAuthMessage("🔒 ACCESS LOCKED: Your Node has been restricted by Admin!");
                 auth.signOut();
                 return;
             }
@@ -1520,42 +1436,61 @@ async function handleGoogleSignIn() {
             });
 
             sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
-            if (err) err.innerText = "";
+            setAuthMessage("");
             launchAppForUser();
             return;
         }
 
-        let cleanUsername = user.email 
-            ? user.email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase() 
-            : 'user_' + user.uid.substring(0, 8);
-
-        const newUserRecord = {
-            name: user.displayName || cleanUsername,
-            email: user.email || 'N/A',
-            phone: user.phoneNumber || 'Not Set',
-            dob: 'Not Set',
-            role: 'user',
-            isLocked: false,
-            unlockedFeatures: 'standard',
-            securityAnswer: 'google_auth',
-            profileImg: user.photoURL || DEFAULT_AVATAR,
-            createdAt: new Date().toISOString(),
-            lastUsernameChange: null
-        };
-
-        await database.ref('users/' + cleanUsername).set(newUserRecord);
-        currentUser = { ...newUserRecord, username: cleanUsername };
-        sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
-        if (err) err.innerText = "";
-        launchAppForUser();
+        setAuthMessage("🚨 No existing account found for this Google ID. Please acquire a Pass first!");
+        auth.signOut();
     } catch (error) {
-        if (err) {
-            if (error.code === 'auth/popup-closed-by-user') {
-                err.innerText = "⚠️ Google sign-in cancelled by user.";
+        if (error.code === 'auth/popup-closed-by-user') {
+            setAuthMessage("⚠️ Google sign-in cancelled.");
+        } else {
+            setAuthMessage("🚨 GOOGLE AUTH ERROR: " + error.message);
+        }
+    }
+}
+
+// ----------------------------------------------------
+// UNIVERSAL FORGET PASSWORD (USERNAME, EMAIL, PHONE)
+// ----------------------------------------------------
+async function handleForgetPassword() {
+    const rawIdentifier = document.getElementById('forget-username')?.value.trim();
+    const security = document.getElementById('forget-security')?.value.trim().toLowerCase();
+    const newPass = document.getElementById('forget-new-password')?.value;
+    const succ = document.getElementById('auth-success');
+
+    if (!rawIdentifier || !security || !newPass) {
+        setAuthMessage("🚨 FAULT: Please enter Identifier (System ID/Email/Phone), Security Key & New Passcode.");
+        return;
+    }
+
+    setAuthMessage("Locating Account Record...");
+
+    try {
+        const matched = await findExistingUserNode({ anyIdentifier: rawIdentifier });
+
+        if (matched) {
+            if (matched.securityAnswer?.toLowerCase() === security) {
+                await database.ref('users/' + matched.username + '/password').set(newPass);
+                setAuthMessage("🟢 PASSCODE RESET SUCCESSFUL! Please Login.", true);
+                if (succ) succ.innerText = "🟢 PASSCODE UPDATED!";
+                setTimeout(() => {
+                    hideForgetPassword();
+                    setAuthMessage("");
+                    if (succ) succ.innerText = "";
+                }, 1500);
+                return;
             } else {
-                err.innerText = "🚨 GOOGLE AUTH ERROR: " + error.message;
+                setAuthMessage("🚨 ACCESS DENIED: Security Key Signature Invalid!");
+                return;
             }
         }
+
+        setAuthMessage("🚨 Account not found matching entered System ID, Email, or Phone!");
+    } catch (e) {
+        setAuthMessage("🚨 ERROR: " + e.message);
     }
 }
 
@@ -1654,7 +1589,6 @@ function renderUserLedger() {
             const rUid = (item.userId || '').toLowerCase();
             const rUname = (item.username || '').toLowerCase();
 
-            // Strict Data Isolation Check
             if (rUid === myUName || rUname === myUName || (myName && rUname === myName)) {
                 rawUserRecords.push(item);
             }
@@ -2025,42 +1959,7 @@ function downloadFilteredData() {
 }
 
 // ----------------------------------------------------
-// FORGET PASSWORD
-// ----------------------------------------------------
-function handleForgetPassword() {
-    const rawUser = document.getElementById('forget-username')?.value.trim();
-    const security = document.getElementById('forget-security')?.value.trim().toLowerCase();
-    const newPass = document.getElementById('forget-new-password')?.value;
-    const err = document.getElementById('auth-error');
-    const succ = document.getElementById('auth-success');
-
-    if (!rawUser || !security || !newPass) {
-        if (err) err.innerText = "🚨 FAULT: Missing verification matrix fields.";
-        return;
-    }
-
-    const targetUser = rawUser.toLowerCase();
-    database.ref('users/' + targetUser).once('value').then((snapshot) => {
-        if (snapshot.exists()) {
-            const userData = snapshot.val();
-            if (userData.securityAnswer?.toLowerCase() === security) {
-                database.ref('users/' + targetUser + '/password').set(newPass).then(() => {
-                    if (err) err.innerText = "";
-                    if (succ) succ.innerText = "🟢 SYSTEM INJECT: PASSCODE MODIFIED!";
-                    setTimeout(() => { 
-                        hideForgetPassword(); 
-                        if (succ) succ.innerText = ""; 
-                    }, 1200);
-                });
-                return;
-            }
-        }
-        if (err) err.innerText = "🚨 CRITICAL BREACH: ANSWER SIGNATURE INVALID!";
-    });
-}
-
-// ----------------------------------------------------
-// DAILY ENTRY SUBMISSION (INSTANT SYNC)
+// DAILY ENTRY SUBMISSION
 // ----------------------------------------------------
 function submitDailyEntry() {
     const amount = document.getElementById('saving-amount')?.value;
@@ -2156,7 +2055,7 @@ function renderAdminDashboard(records) {
 }
 
 // ----------------------------------------------------
-// HELP & SUPPORT LIVE CHAT & TICKETING
+// HELP & SUPPORT LIVE CHAT & TICKETING (VIEWPORT CENTERED)
 // ----------------------------------------------------
 function toggleSupportModal() {
     const modal = document.getElementById('support-modal');
@@ -2164,6 +2063,12 @@ function toggleSupportModal() {
     const isHidden = modal.classList.contains('hidden');
     if (isHidden) {
         modal.classList.remove('hidden');
+        // Ensure standard centered overlay in viewport without awkward jumps
+        modal.style.position = "fixed";
+        modal.style.top = "50%";
+        modal.style.left = "50%";
+        modal.style.transform = "translate(-50%, -50%)";
+        modal.style.zIndex = "99999";
         listenToLiveSupportMessages();
     } else {
         modal.classList.add('hidden');
@@ -2265,45 +2170,32 @@ function logout() {
     const eInp = document.getElementById('login-email');
     const epInp = document.getElementById('login-email-password');
     const phInp = document.getElementById('login-phone');
-    const otpInp = document.getElementById('login-otp');
+    const phPassInp = document.getElementById('login-phone-password');
 
     if (uInp) { uInp.value = ""; uInp.style.borderColor = ""; }
     if (pInp) { pInp.value = ""; pInp.style.borderColor = ""; }
     if (eInp) eInp.value = "";
     if (epInp) epInp.value = "";
     if (phInp) phInp.value = "";
-    if (otpInp) otpInp.value = "";
+    if (phPassInp) phPassInp.value = "";
 
-    document.getElementById('phone-otp-box')?.classList.add('hidden');
     document.getElementById('user-screen')?.classList.add('hidden');
     document.getElementById('admin-screen')?.classList.add('hidden');
     document.getElementById('auth-screen')?.classList.remove('hidden');
 
     const aErr = document.getElementById('admin-create-err');
     const aMsg = document.getElementById('admin-create-msg');
-    const authErr = document.getElementById('auth-error');
     if (aErr) aErr.innerText = "";
     if (aMsg) aMsg.innerText = "";
-    if (authErr) authErr.innerText = "";
+    setAuthMessage("");
 }
 
 // ----------------------------------------------------
-// INITIAL LOAD & DOM SANITIZATION
+// INITIAL LOAD & EVENTS
 // ----------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
     initThemeEngine();
     setupFuturisticEffects();
-
-    // Sanitize login boxes to prevent personal ID leakage
-    const sanitizeInputs = ['login-username', 'login-email', 'login-phone', 'login-password', 'login-email-password'];
-    sanitizeInputs.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.setAttribute('placeholder', '');
-            el.setAttribute('autocomplete', 'off');
-            el.value = '';
-        }
-    });
 
     const savedUserSession = sessionStorage.getItem('cybhacx_auth_user');
     if (savedUserSession) {
@@ -2317,7 +2209,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const latestData = snapshot.val();
                         if (latestData.isLocked === true || latestData.isLocked === "true") {
                             logout();
-                            alert("Your ID has been locked by administrator.");
+                            alert("Your Node has been locked by administrator.");
                             return;
                         }
                         currentUser = { ...latestData, username: currentUser.username };
@@ -2335,11 +2227,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginPass = document.getElementById('login-password');
 
     if (loginUser) {
-        loginUser.addEventListener('input', () => {
-            loginUser.style.borderColor = "";
-            const err = document.getElementById('auth-error');
-            if (err) err.innerText = "";
-        });
+        loginUser.addEventListener('input', () => setAuthMessage(""));
         loginUser.addEventListener('keydown', function (e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -2349,11 +2237,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (loginPass) {
-        loginPass.addEventListener('input', () => {
-            loginPass.style.borderColor = "";
-            const err = document.getElementById('auth-error');
-            if (err) err.innerText = "";
-        });
+        loginPass.addEventListener('input', () => setAuthMessage(""));
         loginPass.addEventListener('keydown', function (e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
