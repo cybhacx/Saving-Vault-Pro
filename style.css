@@ -524,6 +524,47 @@ body.day-mode .btn-cyber-google:hover {
     box-shadow: 0 4px 14px rgba(2, 132, 199, 0.25);
 }
 
+/* AUTH MULTI-METHOD TABS & OTP STYLING */
+#login-form-group .sig-mode-switch {
+    background: var(--input-bg);
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+#login-form-group .btn-mode-tab {
+    font-size: 10px;
+    padding: 9px 6px;
+    text-transform: uppercase;
+}
+#login-section-system,
+#login-section-email,
+#login-section-phone {
+    animation: fadeInTab 0.25s ease-in-out;
+}
+@keyframes fadeInTab {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+#recaptcha-container {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    overflow-x: auto;
+}
+#recaptcha-container iframe {
+    border-radius: 6px;
+}
+#phone-otp-box {
+    border-top: 1px dashed var(--border-color);
+    padding-top: 14px;
+}
+#login-otp {
+    letter-spacing: 6px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 800;
+}
+
 .profile-card {
     background: var(--card-bg);
     margin-bottom: 20px;
@@ -920,4 +961,5 @@ td { font-size: 12px; }
     .filter-header-flex .search-box input { width: 100%; }
     #sig-canvas { max-width: 100%; height: 140px; }
     .cyber-modal-card { padding: 16px; }
+    #login-form-group .btn-mode-tab { font-size: 9px; padding: 7px 4px; }
 }

@@ -30,6 +30,8 @@ let uploadedSignatureBase64 = null;
 let userAnalyticsChart = null;
 let adminMasterChart = null;
 let currentAppTargetGoal = 100000;
+let phoneConfirmationResult = null;
+let phoneRecaptchaVerifier = null;
 
 const DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2300f0ff' viewBox='0 0 16 16'><path d='M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z'/></svg>";
 
@@ -83,7 +85,105 @@ function updateThemeButtonUI(theme) {
 }
 
 // ----------------------------------------------------
-// MODAL CONTROLLERS
+// AUTH TABS SWITCHER
+// ----------------------------------------------------
+function switchLoginTab(tabName) {
+    const tabSystem = document.getElementById('tab-login-system');
+    const tabEmail = document.getElementById('tab-login-email');
+    const tabPhone = document.getElementById('tab-login-phone');
+
+    const secSystem = document.getElementById('login-section-system');
+    const secEmail = document.getElementById('login-section-email');
+    const secPhone = document.getElementById('login-section-phone');
+
+    const err = document.getElementById('auth-error');
+    if (err) err.innerText = "";
+
+    tabSystem?.classList.remove('active');
+    tabEmail?.classList.remove('active');
+    tabPhone?.classList.remove('active');
+
+    secSystem?.classList.add('hidden');
+    secEmail?.classList.add('hidden');
+    secPhone?.classList.add('hidden');
+
+    if (tabName === 'system') {
+        tabSystem?.classList.add('active');
+        secSystem?.classList.remove('hidden');
+    } else if (tabName === 'email') {
+        tabEmail?.classList.add('active');
+        secEmail?.classList.remove('hidden');
+    } else if (tabName === 'phone') {
+        tabPhone?.classList.add('active');
+        secPhone?.classList.remove('hidden');
+        initRecaptcha();
+    }
+}
+
+function initRecaptcha() {
+    if (!phoneRecaptchaVerifier && document.getElementById('recaptcha-container')) {
+        try {
+            phoneRecaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+                size: 'normal',
+                callback: function() {},
+                'expired-callback': function() {
+                    const err = document.getElementById('auth-error');
+                    if (err) err.innerText = "reCAPTCHA expired. Please verify again.";
+                }
+            });
+            phoneRecaptchaVerifier.render();
+        } catch (e) {
+            console.error("reCAPTCHA init error:", e);
+        }
+    }
+}
+
+// ----------------------------------------------------
+// UNIFIED ACCOUNT RESOLVER (DATA DEDUPLICATION)
+// ----------------------------------------------------
+async function findExistingUserNode({ email, phone, username }) {
+    const snap = await database.ref('users').once('value');
+    if (!snap.exists()) return null;
+
+    let matchedUser = null;
+    let matchedKey = null;
+
+    const normEmail = email ? email.trim().toLowerCase() : null;
+    const cleanPhone = phone ? phone.replace(/[^0-9]/g, '').slice(-10) : null;
+    const normUsername = username ? username.trim().toLowerCase() : null;
+
+    snap.forEach(child => {
+        const u = child.val();
+        const k = child.key.toLowerCase();
+
+        const uEmail = u.email ? u.email.trim().toLowerCase() : null;
+        const uPhone = u.phone ? String(u.phone).replace(/[^0-9]/g, '').slice(-10) : null;
+
+        if (normUsername && k === normUsername) {
+            matchedUser = u;
+            matchedKey = child.key;
+            return true;
+        }
+        if (normEmail && uEmail && normEmail === uEmail) {
+            matchedUser = u;
+            matchedKey = child.key;
+            return true;
+        }
+        if (cleanPhone && uPhone && cleanPhone === uPhone) {
+            matchedUser = u;
+            matchedKey = child.key;
+            return true;
+        }
+    });
+
+    if (matchedUser && matchedKey) {
+        return { ...matchedUser, username: matchedKey };
+    }
+    return null;
+}
+
+// ----------------------------------------------------
+// MODAL CONTROLLERS & PAYMENT
 // ----------------------------------------------------
 function showPaymentModal() {
     document.getElementById('payment-modal')?.classList.remove('hidden');
@@ -303,7 +403,7 @@ function togglePassVisibility(inputId, btnElement) {
 }
 
 // ----------------------------------------------------
-// SEPARATE DATE & TIME FORMATTERS
+// DATE & TIME FORMATTERS
 // ----------------------------------------------------
 function formatIndianTime(dateObj) {
     if (!dateObj || !(dateObj instanceof Date) || isNaN(dateObj.getTime())) return 'N/A';
@@ -405,7 +505,6 @@ function renderUserProfileData() {
         planBadge.style.background = isVIP ? 'var(--neon-pink)' : 'var(--neon-blue)';
     }
 
-    // Role-based feature permissions
     const permissions = getResolvedPermissions(currentUser);
 
     const vipAnalyticsPanel = document.getElementById('user-vip-analytics-panel');
@@ -544,7 +643,6 @@ function handleAdminImageUpload(e) {
     reader.readAsDataURL(file);
 }
 
-// 7-DAY USERNAME CHECK & ATOMIC MIGRATION
 function saveUserProfileChanges() {
     if (!currentUser || !currentUser.username) return;
 
@@ -567,7 +665,6 @@ function saveUserProfileChanges() {
 
     const oldUsername = currentUser.username;
 
-    // Check if user is requesting a new username
     if (newUsername && newUsername !== oldUsername) {
         if (currentUser.lastUsernameChange) {
             const lastChange = new Date(currentUser.lastUsernameChange);
@@ -578,7 +675,6 @@ function saveUserProfileChanges() {
             }
         }
 
-        // Verify username uniqueness
         database.ref('users/' + newUsername).once('value').then(snap => {
             if (snap.exists()) {
                 alert(`System ID [${newUsername}] is already taken! Choose another.`);
@@ -588,7 +684,6 @@ function saveUserProfileChanges() {
             updates.username = newUsername;
             updates.lastUsernameChange = new Date().toISOString();
 
-            // Atomic node clone and cleanup
             const migratedData = { ...currentUser, ...updates };
             database.ref('users/' + newUsername).set(migratedData).then(() => {
                 database.ref('users/' + oldUsername).remove();
@@ -860,6 +955,7 @@ function listenToUserProfiles() {
 
         snapshot.forEach((childSnapshot) => {
             const req = childSnapshot.val();
+            const rKey = childSnapshot.key;
             const dateObj = parseRecordDate(req.timestamp);
             const timeOnly = formatIndianTime(dateObj);
             const dateOnly = formatIndianDate(dateObj);
@@ -1117,7 +1213,7 @@ function resetFilters() {
 }
 
 // ----------------------------------------------------
-// AUTHENTICATION
+// AUTHENTICATION: 4 UNIFIED METHODS
 // ----------------------------------------------------
 function showForgetPassword() {
     document.getElementById('login-form-group')?.classList.add('hidden');
@@ -1133,6 +1229,7 @@ function hideForgetPassword() {
     if (err) err.innerText = "";
 }
 
+// 1. SYSTEM ID / USERNAME LOGIN
 function handleLogin() {
     const rawUserInp = document.getElementById('login-username')?.value.trim();
     const passInp = document.getElementById('login-password')?.value;
@@ -1218,7 +1315,158 @@ function handleLogin() {
     });
 }
 
-function handleGoogleSignIn() {
+// 2. EMAIL & PASSWORD LOGIN (UNIFIED MAPPING)
+async function handleEmailPasswordLogin() {
+    const email = document.getElementById('login-email')?.value.trim();
+    const pass = document.getElementById('login-email-password')?.value;
+    const err = document.getElementById('auth-error');
+
+    if (!email || !pass) {
+        if (err) err.innerText = "🚨 ACCESS DENIED: Email and Passcode required!";
+        return;
+    }
+
+    if (err) err.innerText = "Verifying email profile...";
+
+    try {
+        const matched = await findExistingUserNode({ email });
+        if (matched) {
+            if (matched.isLocked === true || matched.isLocked === "true") {
+                if (err) err.innerText = "🔒 ACCESS LOCKED: Your Node has been restricted by Admin!";
+                return;
+            }
+            if (String(matched.password).trim() === String(pass).trim()) {
+                currentUser = matched;
+                sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
+                if (err) err.innerText = "";
+                launchAppForUser();
+                return;
+            } else {
+                if (err) err.innerText = "🚨 ACCESS DENIED: Invalid Passcode for this email!";
+                return;
+            }
+        }
+
+        // Firebase Auth fallback
+        const userCred = await auth.signInWithEmailAndPassword(email, pass);
+        const authUser = userCred.user;
+        let cleanUsername = authUser.email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
+
+        currentUser = {
+            name: authUser.displayName || cleanUsername,
+            email: authUser.email,
+            phone: authUser.phoneNumber || 'Not Set',
+            dob: 'Not Set',
+            role: 'user',
+            isLocked: false,
+            unlockedFeatures: 'standard',
+            securityAnswer: 'email_auth',
+            profileImg: DEFAULT_AVATAR,
+            createdAt: new Date().toISOString(),
+            username: cleanUsername
+        };
+
+        await database.ref('users/' + cleanUsername).set(currentUser);
+        sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
+        if (err) err.innerText = "";
+        launchAppForUser();
+    } catch (e) {
+        if (err) err.innerText = "🚨 AUTH ERROR: " + e.message;
+    }
+}
+
+// 3. PHONE NUMBER OTP LOGIN
+async function handleSendPhoneOTP() {
+    let phoneNum = document.getElementById('login-phone')?.value.trim();
+    const err = document.getElementById('auth-error');
+
+    if (!phoneNum) {
+        if (err) err.innerText = "🚨 Please enter a valid mobile number!";
+        return;
+    }
+
+    if (!phoneNum.startsWith('+')) {
+        phoneNum = '+91' + phoneNum.replace(/[^0-9]/g, '').slice(-10);
+    }
+
+    initRecaptcha();
+    if (err) err.innerText = "Sending OTP to " + phoneNum + "...";
+
+    try {
+        phoneConfirmationResult = await auth.signInWithPhoneNumber(phoneNum, phoneRecaptchaVerifier);
+        document.getElementById('phone-otp-box')?.classList.remove('hidden');
+        if (err) err.innerText = "🟢 OTP dispatched! Enter the 6-digit code below.";
+    } catch (error) {
+        if (err) err.innerText = "🚨 SMS Dispatch Fault: " + error.message;
+        if (window.grecaptcha && phoneRecaptchaVerifier) {
+            phoneRecaptchaVerifier.render().then(widgetId => grecaptcha.reset(widgetId));
+        }
+    }
+}
+
+async function handleVerifyPhoneOTP() {
+    const otpCode = document.getElementById('login-otp')?.value.trim();
+    const phoneNum = document.getElementById('login-phone')?.value.trim();
+    const err = document.getElementById('auth-error');
+
+    if (!otpCode || otpCode.length < 6) {
+        if (err) err.innerText = "🚨 Please enter the complete 6-digit OTP code!";
+        return;
+    }
+    if (!phoneConfirmationResult) {
+        if (err) err.innerText = "🚨 Please request an OTP code first.";
+        return;
+    }
+
+    if (err) err.innerText = "Validating OTP...";
+
+    try {
+        const result = await phoneConfirmationResult.confirm(otpCode);
+        const user = result.user;
+        const phone = user.phoneNumber || phoneNum;
+
+        const matched = await findExistingUserNode({ phone });
+        if (matched) {
+            if (matched.isLocked === true || matched.isLocked === "true") {
+                if (err) err.innerText = "🔒 ACCESS LOCKED: Your Node has been restricted by Admin!";
+                auth.signOut();
+                return;
+            }
+            currentUser = matched;
+            sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
+            if (err) err.innerText = "";
+            launchAppForUser();
+            return;
+        }
+
+        const cleanUsername = 'ph_' + phone.replace(/[^0-9]/g, '').slice(-10);
+        const newUserRecord = {
+            name: 'User ' + phone.slice(-4),
+            email: 'Not Set',
+            phone: phone,
+            dob: 'Not Set',
+            role: 'user',
+            isLocked: false,
+            unlockedFeatures: 'standard',
+            securityAnswer: 'phone_otp',
+            profileImg: DEFAULT_AVATAR,
+            createdAt: new Date().toISOString(),
+            lastUsernameChange: null,
+            username: cleanUsername
+        };
+
+        await database.ref('users/' + cleanUsername).set(newUserRecord);
+        currentUser = newUserRecord;
+        sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
+        if (err) err.innerText = "";
+        launchAppForUser();
+    } catch (e) {
+        if (err) err.innerText = "🚨 OTP Verification Error: " + e.message;
+    }
+}
+
+// 4. GOOGLE SIGN-IN (WITH UNIFIED MERGE)
+async function handleGoogleSignIn() {
     const err = document.getElementById('auth-error');
     if (err) err.innerText = "Opening Google Sign-In...";
 
@@ -1228,66 +1476,61 @@ function handleGoogleSignIn() {
         return;
     }
 
-    auth.signInWithPopup(googleProvider).then((result) => {
+    try {
+        const result = await auth.signInWithPopup(googleProvider);
         const user = result.user;
         if (!user) return;
+
+        const matched = await findExistingUserNode({ email: user.email });
+
+        if (matched) {
+            if (matched.isLocked === true || matched.isLocked === "true") {
+                if (err) err.innerText = "🔒 ACCESS LOCKED: Your Node has been restricted by Admin!";
+                auth.signOut();
+                return;
+            }
+
+            currentUser = {
+                ...matched,
+                email: user.email,
+                profileImg: matched.profileImg || user.photoURL || DEFAULT_AVATAR
+            };
+
+            await database.ref('users/' + matched.username).update({
+                email: currentUser.email,
+                profileImg: currentUser.profileImg
+            });
+
+            sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
+            if (err) err.innerText = "";
+            launchAppForUser();
+            return;
+        }
 
         let cleanUsername = user.email 
             ? user.email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase() 
             : 'user_' + user.uid.substring(0, 8);
 
-        const userRef = database.ref('users/' + cleanUsername);
+        const newUserRecord = {
+            name: user.displayName || cleanUsername,
+            email: user.email || 'N/A',
+            phone: user.phoneNumber || 'Not Set',
+            dob: 'Not Set',
+            role: 'user',
+            isLocked: false,
+            unlockedFeatures: 'standard',
+            securityAnswer: 'google_auth',
+            profileImg: user.photoURL || DEFAULT_AVATAR,
+            createdAt: new Date().toISOString(),
+            lastUsernameChange: null
+        };
 
-        userRef.once('value').then((snapshot) => {
-            if (snapshot.exists()) {
-                const existingData = snapshot.val();
-                if (existingData.isLocked === true || existingData.isLocked === "true") {
-                    if (err) err.innerText = "🔒 ACCESS LOCKED: Your Node has been restricted by Admin!";
-                    auth.signOut();
-                    return;
-                }
-
-                currentUser = {
-                    ...existingData,
-                    username: cleanUsername,
-                    email: existingData.email || user.email,
-                    profileImg: existingData.profileImg || user.photoURL || DEFAULT_AVATAR
-                };
-
-                userRef.update({
-                    email: currentUser.email,
-                    profileImg: currentUser.profileImg
-                });
-
-                sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
-                if (err) err.innerText = "";
-                launchAppForUser();
-            } else {
-                const newUserRecord = {
-                    name: user.displayName || cleanUsername,
-                    email: user.email || 'N/A',
-                    phone: user.phoneNumber || 'Not Set',
-                    dob: 'Not Set',
-                    role: 'user',
-                    isLocked: false,
-                    unlockedFeatures: 'standard',
-                    securityAnswer: 'google_auth',
-                    profileImg: user.photoURL || DEFAULT_AVATAR,
-                    createdAt: new Date().toISOString(),
-                    lastUsernameChange: null
-                };
-
-                userRef.set(newUserRecord).then(() => {
-                    currentUser = { ...newUserRecord, username: cleanUsername };
-                    sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
-                    if (err) err.innerText = "";
-                    launchAppForUser();
-                }).catch(e => {
-                    if (err) err.innerText = "🚨 FAULT: Could not initialize user matrix (" + e.message + ")";
-                });
-            }
-        });
-    }).catch((error) => {
+        await database.ref('users/' + cleanUsername).set(newUserRecord);
+        currentUser = { ...newUserRecord, username: cleanUsername };
+        sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
+        if (err) err.innerText = "";
+        launchAppForUser();
+    } catch (error) {
         if (err) {
             if (error.code === 'auth/popup-closed-by-user') {
                 err.innerText = "⚠️ Google sign-in cancelled by user.";
@@ -1295,7 +1538,7 @@ function handleGoogleSignIn() {
                 err.innerText = "🚨 GOOGLE AUTH ERROR: " + error.message;
             }
         }
-    });
+    }
 }
 
 function launchAppForUser() {
@@ -1315,7 +1558,7 @@ function launchAppForUser() {
 }
 
 // ----------------------------------------------------
-// USER LEDGER: CORRECT COLUMN SEPARATION
+// USER LEDGER: ISOLATION & COLUMN SEPARATION
 // ----------------------------------------------------
 function bindUserFilterEvents() {
     const ySel = document.getElementById('user-filter-year');
@@ -1393,6 +1636,7 @@ function renderUserLedger() {
             const rUid = (item.userId || '').toLowerCase();
             const rUname = (item.username || '').toLowerCase();
 
+            // Strict Data Isolation Check
             if (rUid === myUName || rUname === myUName || (myName && rUname === myName)) {
                 rawUserRecords.push(item);
             }
@@ -1452,7 +1696,6 @@ function renderUserLedger() {
             const tr = document.createElement('tr');
             const isRequested = item.deleteRequested === true;
 
-            // Columns correctly ordered: TIMESTAMP, DATE, AMOUNT, STATUS, ACTION
             tr.innerHTML = `
                 <td>${timeOnly}</td>
                 <td>${dateOnly}</td>
@@ -1624,7 +1867,6 @@ function handleAdminCreateUser() {
         return;
     }
 
-    // Granular toggle settings
     const customFeatureOverrides = {
         drawpad: document.getElementById('feat-toggle-drawpad').checked,
         imgupload: document.getElementById('feat-toggle-imgupload').checked,
@@ -1653,7 +1895,6 @@ function handleAdminCreateUser() {
     });
 }
 
-// EDIT USER PROFILE & PRELOAD FEATURE CHECKBOXES
 function editUserProfile(username) {
     database.ref('users/' + username).once('value').then(snapshot => {
         if (!snapshot.exists()) return;
@@ -1674,7 +1915,6 @@ function editUserProfile(username) {
         const featSel = document.getElementById('signup-features-unlocked');
         if (featSel) featSel.value = user.unlockedFeatures || "standard";
 
-        // Load custom overrides or fall back to tier defaults
         const perms = getResolvedPermissions(user);
         document.getElementById('feat-toggle-drawpad').checked = perms.canDrawSign;
         document.getElementById('feat-toggle-imgupload').checked = perms.canUploadSign;
@@ -1802,7 +2042,7 @@ function handleForgetPassword() {
 }
 
 // ----------------------------------------------------
-// DAILY ENTRY SUBMISSION
+// DAILY ENTRY SUBMISSION (INSTANT SYNC)
 // ----------------------------------------------------
 function submitDailyEntry() {
     const amount = document.getElementById('saving-amount')?.value;
@@ -1856,7 +2096,7 @@ function submitDailyEntry() {
 }
 
 // ----------------------------------------------------
-// ADMIN DASHBOARD RENDERING: ALIGNED COLUMNS
+// ADMIN DASHBOARD RENDERING
 // ----------------------------------------------------
 function renderAdminDashboard(records) {
     const tbody = document.getElementById('records-body');
@@ -1875,7 +2115,6 @@ function renderAdminDashboard(records) {
         const isDeleteReq = record.deleteRequested === true;
         const dateObj = parseRecordDate(record.timestamp);
 
-        // Columns correctly ordered: OPERATOR, TIMESTAMP, DATE, AMOUNT, STATUS, SIGNATURE, ACTION
         row.innerHTML = `
             <td><b>${record.username || record.userId || 'N/A'}</b></td>
             <td>${formatIndianTime(dateObj)}</td>
@@ -2005,17 +2244,23 @@ function logout() {
     
     const uInp = document.getElementById('login-username');
     const pInp = document.getElementById('login-password');
-    if (uInp) {
-        uInp.value = "";
-        uInp.style.borderColor = "";
-    }
-    if (pInp) {
-        pInp.value = "";
-        pInp.style.borderColor = "";
-    }
+    const eInp = document.getElementById('login-email');
+    const epInp = document.getElementById('login-email-password');
+    const phInp = document.getElementById('login-phone');
+    const otpInp = document.getElementById('login-otp');
+
+    if (uInp) { uInp.value = ""; uInp.style.borderColor = ""; }
+    if (pInp) { pInp.value = ""; pInp.style.borderColor = ""; }
+    if (eInp) eInp.value = "";
+    if (epInp) epInp.value = "";
+    if (phInp) phInp.value = "";
+    if (otpInp) otpInp.value = "";
+
+    document.getElementById('phone-otp-box')?.classList.add('hidden');
     document.getElementById('user-screen')?.classList.add('hidden');
     document.getElementById('admin-screen')?.classList.add('hidden');
     document.getElementById('auth-screen')?.classList.remove('hidden');
+
     const aErr = document.getElementById('admin-create-err');
     const aMsg = document.getElementById('admin-create-msg');
     const authErr = document.getElementById('auth-error');
@@ -2038,7 +2283,7 @@ document.addEventListener('DOMContentLoaded', () => {
             launchAppForUser();
 
             if (currentUser && currentUser.role !== 'admin') {
-                database.ref('users/' + currentUser.username).once('value').then(snapshot => {
+                database.ref('users/' + currentUser.username).on('value', snapshot => {
                     if (snapshot.exists()) {
                         const latestData = snapshot.val();
                         if (latestData.isLocked === true || latestData.isLocked === "true") {
@@ -2050,7 +2295,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         sessionStorage.setItem('cybhacx_auth_user', JSON.stringify(currentUser));
                         renderUserProfileData();
                     }
-                }).catch(() => {});
+                });
             }
         } catch (e) {
             sessionStorage.removeItem('cybhacx_auth_user');

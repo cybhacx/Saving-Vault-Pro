@@ -41,20 +41,64 @@
             </div>
             
             <div id="login-form-group">
-                <div class="input-group">
-                    <label><span class="txt-pink">►</span> ENTER SYSTEM ID</label>
-                    <input type="text" id="login-username" placeholder="Username...">
+                <!-- LOGIN METHOD SWITCHER TABS -->
+                <div class="sig-mode-switch" style="margin-bottom: 15px;">
+                    <button type="button" id="tab-login-system" class="btn-mode-tab active" onclick="switchLoginTab('system')">SYSTEM ID</button>
+                    <button type="button" id="tab-login-email" class="btn-mode-tab" onclick="switchLoginTab('email')">EMAIL</button>
+                    <button type="button" id="tab-login-phone" class="btn-mode-tab" onclick="switchLoginTab('phone')">PHONE OTP</button>
                 </div>
-                <div class="input-group">
-                    <label><span class="txt-blue">►</span> PASSCODE </label>
-                    <div class="password-wrapper">
-                        <input type="password" id="login-password" placeholder="••••••••">
-                        <button type="button" class="btn-toggle-eye" onclick="togglePassVisibility('login-password', this)">🙈</button>
+
+                <!-- 1. SYSTEM ID LOGIN -->
+                <div id="login-section-system">
+                    <div class="input-group">
+                        <label><span class="txt-pink">►</span> ENTER SYSTEM ID</label>
+                        <input type="text" id="login-username" placeholder="Username (e.g. ravi22)...">
+                    </div>
+                    <div class="input-group">
+                        <label><span class="txt-blue">►</span> PASSCODE </label>
+                        <div class="password-wrapper">
+                            <input type="password" id="login-password" placeholder="••••••••">
+                            <button type="button" class="btn-toggle-eye" onclick="togglePassVisibility('login-password', this)">🙈</button>
+                        </div>
+                    </div>
+                    <button type="button" onclick="handleLogin()" class="btn-cyber btn-glow-blue">INITIALIZE LOGIN</button>
+                </div>
+
+                <!-- 2. EMAIL & PASSWORD LOGIN -->
+                <div id="login-section-email" class="hidden">
+                    <div class="input-group">
+                        <label><span class="txt-pink">►</span> REGISTERED EMAIL</label>
+                        <input type="email" id="login-email" placeholder="official@example.com">
+                    </div>
+                    <div class="input-group">
+                        <label><span class="txt-blue">►</span> PASSCODE </label>
+                        <div class="password-wrapper">
+                            <input type="password" id="login-email-password" placeholder="••••••••">
+                            <button type="button" class="btn-toggle-eye" onclick="togglePassVisibility('login-email-password', this)">🙈</button>
+                        </div>
+                    </div>
+                    <button type="button" onclick="handleEmailPasswordLogin()" class="btn-cyber btn-glow-blue">LOGIN WITH EMAIL</button>
+                </div>
+
+                <!-- 3. PHONE NUMBER & OTP LOGIN -->
+                <div id="login-section-phone" class="hidden">
+                    <div class="input-group">
+                        <label><span class="txt-pink">►</span> MOBILE NUMBER (+91)</label>
+                        <input type="tel" id="login-phone" placeholder="+91 9876543210">
+                    </div>
+                    <div id="recaptcha-container" style="margin: 10px 0;"></div>
+                    <button type="button" id="btn-send-otp" onclick="handleSendPhoneOTP()" class="btn-cyber btn-glow-blue">SEND OTP CODE</button>
+                    
+                    <div id="phone-otp-box" class="hidden" style="margin-top: 15px;">
+                        <div class="input-group">
+                            <label><span class="txt-green">►</span> 6-DIGIT OTP VERIFICATION</label>
+                            <input type="text" id="login-otp" placeholder="Enter 6-digit OTP" maxlength="6">
+                        </div>
+                        <button type="button" onclick="handleVerifyPhoneOTP()" class="btn-cyber btn-glow-green">VERIFY & LOGIN</button>
                     </div>
                 </div>
-                <button type="button" onclick="handleLogin()" class="btn-cyber btn-glow-blue">INITIALIZE LOGIN</button>
 
-                <!-- SECURE CLOUD AUTH -->
+                <!-- SECURE CLOUD AUTH (GOOGLE) -->
                 <div class="cyber-auth-divider">
                     <span>// OR CONNECT //</span>
                 </div>
