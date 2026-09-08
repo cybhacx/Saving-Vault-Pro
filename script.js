@@ -139,7 +139,7 @@ function initRecaptcha() {
 }
 
 // ----------------------------------------------------
-// UNIFIED ACCOUNT RESOLVER (DATA DEDUPLICATION)
+// UNIFIED ACCOUNT RESOLVER (DATA DEDUPLICATION & SYNC)
 // ----------------------------------------------------
 async function findExistingUserNode({ email, phone, username }) {
     const snap = await database.ref('users').once('value');
@@ -1315,7 +1315,7 @@ function handleLogin() {
     });
 }
 
-// 2. EMAIL & PASSWORD LOGIN (UNIFIED MAPPING)
+// 2. EMAIL & PASSWORD LOGIN (INSTANT SYNC & RETENTION)
 async function handleEmailPasswordLogin() {
     const email = document.getElementById('login-email')?.value.trim();
     const pass = document.getElementById('login-email-password')?.value;
@@ -1326,7 +1326,7 @@ async function handleEmailPasswordLogin() {
         return;
     }
 
-    if (err) err.innerText = "Verifying email profile...";
+    if (err) err.innerText = "Connecting to Node...";
 
     try {
         const matched = await findExistingUserNode({ email });
@@ -1342,25 +1342,37 @@ async function handleEmailPasswordLogin() {
                 launchAppForUser();
                 return;
             } else {
-                if (err) err.innerText = "🚨 ACCESS DENIED: Invalid Passcode for this email!";
+                if (err) err.innerText = "🚨 ACCESS DENIED: Invalid Passcode for this account!";
                 return;
             }
         }
 
-        // Firebase Auth fallback
-        const userCred = await auth.signInWithEmailAndPassword(email, pass);
-        const authUser = userCred.user;
+        // Direct Registration & Login without verification lag
+        let authUser = null;
+        try {
+            const userCred = await auth.signInWithEmailAndPassword(email, pass);
+            authUser = userCred.user;
+        } catch (signInErr) {
+            if (signInErr.code === 'auth/user-not-found') {
+                const newCred = await auth.createUserWithEmailAndPassword(email, pass);
+                authUser = newCred.user;
+            } else {
+                throw signInErr;
+            }
+        }
+
         let cleanUsername = authUser.email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
 
         currentUser = {
             name: authUser.displayName || cleanUsername,
             email: authUser.email,
-            phone: authUser.phoneNumber || 'Not Set',
+            phone: 'Not Set',
             dob: 'Not Set',
             role: 'user',
+            password: pass,
             isLocked: false,
             unlockedFeatures: 'standard',
-            securityAnswer: 'email_auth',
+            securityAnswer: 'email_node',
             profileImg: DEFAULT_AVATAR,
             createdAt: new Date().toISOString(),
             username: cleanUsername
@@ -1375,7 +1387,7 @@ async function handleEmailPasswordLogin() {
     }
 }
 
-// 3. PHONE NUMBER OTP LOGIN
+// 3. PHONE NUMBER OTP LOGIN (INDIAN +91 AUTOMATION)
 async function handleSendPhoneOTP() {
     let phoneNum = document.getElementById('login-phone')?.value.trim();
     const err = document.getElementById('auth-error');
@@ -1385,15 +1397,21 @@ async function handleSendPhoneOTP() {
         return;
     }
 
-    if (!phoneNum.startsWith('+')) {
-        phoneNum = '+91' + phoneNum.replace(/[^0-9]/g, '').slice(-10);
+    const digitsOnly = phoneNum.replace(/[^0-9]/g, '');
+    const clean10 = digitsOnly.slice(-10);
+
+    if (clean10.length !== 10) {
+        if (err) err.innerText = "🚨 Invalid Phone: Please enter a 10-digit Indian number!";
+        return;
     }
 
+    const normalizedPhone = '+91' + clean10;
+
     initRecaptcha();
-    if (err) err.innerText = "Sending OTP to " + phoneNum + "...";
+    if (err) err.innerText = "Dispatching OTP to " + normalizedPhone + "...";
 
     try {
-        phoneConfirmationResult = await auth.signInWithPhoneNumber(phoneNum, phoneRecaptchaVerifier);
+        phoneConfirmationResult = await auth.signInWithPhoneNumber(normalizedPhone, phoneRecaptchaVerifier);
         document.getElementById('phone-otp-box')?.classList.remove('hidden');
         if (err) err.innerText = "🟢 OTP dispatched! Enter the 6-digit code below.";
     } catch (error) {
@@ -1423,7 +1441,7 @@ async function handleVerifyPhoneOTP() {
     try {
         const result = await phoneConfirmationResult.confirm(otpCode);
         const user = result.user;
-        const phone = user.phoneNumber || phoneNum;
+        const phone = user.phoneNumber || ('+91' + phoneNum.replace(/[^0-9]/g, '').slice(-10));
 
         const matched = await findExistingUserNode({ phone });
         if (matched) {
@@ -1465,13 +1483,13 @@ async function handleVerifyPhoneOTP() {
     }
 }
 
-// 4. GOOGLE SIGN-IN (WITH UNIFIED MERGE)
+// 4. GOOGLE SIGN-IN (INSTANT UNIFIED SYNC)
 async function handleGoogleSignIn() {
     const err = document.getElementById('auth-error');
-    if (err) err.innerText = "Opening Google Sign-In...";
+    if (err) err.innerText = "Connecting Google Node...";
 
     if (window.location.protocol === 'file:') {
-        alert("Google Sign-In requires http:// or https:// (Live Server).");
+        alert("Google Sign-In requires http:// or https:// protocol (Live Server).");
         if (err) err.innerText = "⚠️ Error: Run via Web Server!";
         return;
     }
@@ -1558,7 +1576,7 @@ function launchAppForUser() {
 }
 
 // ----------------------------------------------------
-// USER LEDGER: ISOLATION & COLUMN SEPARATION
+// USER LEDGER: DATA ISOLATION
 // ----------------------------------------------------
 function bindUserFilterEvents() {
     const ySel = document.getElementById('user-filter-year');
@@ -2270,11 +2288,22 @@ function logout() {
 }
 
 // ----------------------------------------------------
-// INITIAL LOAD & SESSION MOUNT
+// INITIAL LOAD & DOM SANITIZATION
 // ----------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
     initThemeEngine();
     setupFuturisticEffects();
+
+    // Sanitize login boxes to prevent personal ID leakage
+    const sanitizeInputs = ['login-username', 'login-email', 'login-phone', 'login-password', 'login-email-password'];
+    sanitizeInputs.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.setAttribute('placeholder', '');
+            el.setAttribute('autocomplete', 'off');
+            el.value = '';
+        }
+    });
 
     const savedUserSession = sessionStorage.getItem('cybhacx_auth_user');
     if (savedUserSession) {
